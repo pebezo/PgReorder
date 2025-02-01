@@ -1,0 +1,17 @@
+services:
+  
+  integration-db:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    ports:
+      - "8811:5432"
+    command: -p 5432    
+
+networks:
+  default:

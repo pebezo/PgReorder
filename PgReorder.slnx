@@ -1,0 +1,8 @@
+﻿<Solution>
+  <Folder Name="/Root/">
+    <File Path="docker-compose.yml" />
+    <File Path="Dockerfile" />
+  </Folder>
+  <Project Path="PgReorder.Core\PgReorder.Core.csproj" Type="Classic C#" />
+  <Project Path="PgReorder.Tests\PgReorder.Tests.csproj" Type="Classic C#" />
+</Solution>
