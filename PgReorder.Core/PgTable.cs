@@ -34,7 +34,15 @@ public class PgTable(string? schema, string? table)
         }
     }
 
-    public IEnumerable<PgConstraint> Constraints() => _constraints;
+    /// <summary>
+    /// List of constraints that should be used during the CREATE TABLE DDL
+    /// </summary>
+    public IEnumerable<PgConstraint> AllCreateTableConstraints() => _constraints.Where(c => c.UseInCreateTable);
+    
+    /// <summary>
+    /// List of constraints that should be used after the temporary table has been dropped
+    /// </summary>
+    public IEnumerable<PgConstraint> AllForeignKeyConstraints() => _constraints.Where(c => !c.UseInCreateTable);
     
     public void AddColumn(PgColumn column)
     {

@@ -29,4 +29,9 @@ public class PgConstraint
     ///     FOREIGN KEY (col) REFERENCES table2(col) ON UPDATE CASCADE
     /// </summary>
     public required string? Definition { get; set; }
+
+    /// <summary>
+    /// Treat foreign-key constraints differently from all the other constraints
+    /// </summary>
+    public bool UseInCreateTable => Type is not 'f';
 }

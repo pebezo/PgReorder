@@ -1,4 +1,5 @@
-﻿using PgReorder.Core;
+﻿using System.Data;
+using PgReorder.Core;
 using Xunit;
 
 namespace PgReorder.Tests;
@@ -17,4 +18,35 @@ public abstract class DockerBase
 
     protected DatabaseRepository Db => _fixture.Build<DatabaseRepository>();
     protected ReorderTableService ReorderTableService => _fixture.Build<ReorderTableService>();
+    
+    /// <summary>
+    /// Reload a table from the database and makes sure the column definition / type for each column has not changed
+    /// </summary>
+    protected async Task<PgTable> CheckColumnDefinition(PgTable source)
+    {
+        var target = ReorderTableService;
+        await target.Load(source.Schema, source.Table, CancellationToken.None);
+        source.Compare(target.LoadedTable);
+        return target.LoadedTable;
+    }
+
+    /// <summary>
+    /// Given a SQL statement, we look at the first row and check the order and column values 
+    /// </summary>
+    protected async Task CheckRowValues(string sql, string table, params IList<object> expected)
+    {
+        var dt = await Db.RawDataTable(sql);
+
+        Assert.NotNull(dt);
+        Assert.NotEmpty(dt.Rows);
+
+        for (int i = 0; i < expected.Count; i++)
+        {
+            var actual = dt.Rows[0].Field<object>(i);
+            if (actual is null || !actual.Equals(expected[i]))
+            {
+                Assert.Fail($"Table '{table}' column #{i} has '{actual}', expecting '{expected[i]}'");    
+            }
+        }
+    }
 }

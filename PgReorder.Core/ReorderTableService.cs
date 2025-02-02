@@ -7,6 +7,8 @@ public class ReorderTableService(DatabaseRepository db)
     private PgTable? _table;
     public PgTable LoadedTable => _table ?? throw new Exception("No table has been loaded");
     
+    public string? LastRunId { get; private set; }
+    
     public async Task Load(string? tableSchema, string? tableName, CancellationToken token)
     {
         if (tableSchema is null)
@@ -37,9 +39,9 @@ public class ReorderTableService(DatabaseRepository db)
 
     private string GenerateScript()
     {
-        var runId = GenerateRandomRunId(6);
+        LastRunId = GenerateRandomRunId(6);
         var sourceTable = LoadedTable.SchemaTableEscaped();
-        var destinationTable = LoadedTable.SchemaTableEscaped(tableSuffix:$"_reorder_{runId}");
+        var destinationTable = LoadedTable.SchemaTableEscaped(tableSuffix:$"_reorder_{LastRunId}");
         
         var sb = new StringBuilder();
         sb.AppendLine("BEGIN TRANSACTION;");
@@ -75,6 +77,12 @@ public class ReorderTableService(DatabaseRepository db)
             sb.AppendLine("-- Ensure the sequence would return the proper next value");
             sb.AppendLine($"SELECT setval(pg_get_serial_sequence('{LoadedTable.TableEscaped()}', '{identity.ColumnNameEscaped()}'), (SELECT MAX({identity.ColumnNameEscaped()}) FROM {LoadedTable.TableEscaped()}));");
         }
+
+        foreach (var fk in LoadedTable.AllForeignKeyConstraints())
+        {
+            sb.AppendLine();
+            sb.AppendLine($"ALTER TABLE {LoadedTable.TableEscaped()} ADD CONSTRAINT {fk.Name} {fk.Definition};");
+        }
         
         sb.AppendLine("COMMIT TRANSACTION;");
         
@@ -90,7 +98,7 @@ public class ReorderTableService(DatabaseRepository db)
             lines.Add(column.AppendDefinition());
         }
 
-        foreach (var constraint in LoadedTable.Constraints())
+        foreach (var constraint in LoadedTable.AllCreateTableConstraints())
         {
             if (constraint.Definition is not null)
             {
