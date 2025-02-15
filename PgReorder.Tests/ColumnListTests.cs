@@ -3,34 +3,34 @@ using Xunit;
 
 namespace PgReorder.Tests;
 
-public class PgTableTests
+public class ColumnListTests
 {
     [Fact]
     public void Can_Move_Column_Down()
     {
-        var table = new PgTable("schema1", "table1");
+        var cl = new ColumnList("schema1", "table1");
 
-        var c1 = table.AddColumn("c1");
-        var c2 = table.AddColumn("c2");
-        var c3 = table.AddColumn("c3");
+        var c1 = cl.AddColumn("c1");
+        var c2 = cl.AddColumn("c2");
+        var c3 = cl.AddColumn("c3");
 
         CheckNewOrdinalPosition([c1, c2, c3]);
         CheckOrdinalPosition([c1, c2, c3]);
         
         // Move c1 down from the first spot to the second. This swaps places with c2
-        Assert.True(table.Move(c1, +1));
+        Assert.True(cl.Move(c1, +1));
         
         CheckNewOrdinalPosition([c2, c1, c3]);
         CheckOrdinalPosition([c1, c2, c3]);
         
         // Move c1 down one more spot. It should now be at the bottom on the list.
-        Assert.True(table.Move(c1, +1));
+        Assert.True(cl.Move(c1, +1));
         
         CheckNewOrdinalPosition([c2, c3, c1]);
         CheckOrdinalPosition([c1, c2, c3]);
         
         // We should not be able to move it down anymore.
-        Assert.False(table.Move(c1, +1));
+        Assert.False(cl.Move(c1, +1));
         
         CheckNewOrdinalPosition([c2, c3, c1]);
         CheckOrdinalPosition([c1, c2, c3]);
@@ -39,29 +39,29 @@ public class PgTableTests
     [Fact]
     public void Can_Move_Column_Up()
     {
-        var table = new PgTable("schema1", "table1");
+        var cl = new ColumnList("schema1", "table1");
 
-        var c1 = table.AddColumn("c1");
-        var c2 = table.AddColumn("c2");
-        var c3 = table.AddColumn("c3");
+        var c1 = cl.AddColumn("c1");
+        var c2 = cl.AddColumn("c2");
+        var c3 = cl.AddColumn("c3");
         
         CheckNewOrdinalPosition([c1, c2, c3]);
         CheckOrdinalPosition([c1, c2, c3]);
         
         // Move c3 up from the last spot to the second. This swaps places with c2
-        Assert.True(table.Move(c3, -1));
+        Assert.True(cl.Move(c3, -1));
         
         CheckNewOrdinalPosition([c1, c3, c2]);
         CheckOrdinalPosition([c1, c2, c3]);
         
         // Move c3 up one more spot. It should now be at the top of the list.
-        Assert.True(table.Move(c3, -1));
+        Assert.True(cl.Move(c3, -1));
         
         CheckNewOrdinalPosition([c3, c1, c2]);
         CheckOrdinalPosition([c1, c2, c3]);
         
         // We should not able to move it up anymore. The position stays the same.
-        Assert.False(table.Move(c3, -1));
+        Assert.False(cl.Move(c3, -1));
         
         CheckNewOrdinalPosition([c3, c1, c2]);
         CheckOrdinalPosition([c1, c2, c3]);
@@ -82,14 +82,14 @@ public class PgTableTests
     [InlineData("c3", 10)]
     public void Cannot_Move_Column_Outside_Of_Bounds(string columnName, int position)
     {
-        var table = new PgTable("schema1", "table1");
+        var cl = new ColumnList("schema1", "table1");
 
-        var c1 = table.AddColumn("c1");
-        var c2 = table.AddColumn("c2");
-        var c3 = table.AddColumn("c3");
+        var c1 = cl.AddColumn("c1");
+        var c2 = cl.AddColumn("c2");
+        var c3 = cl.AddColumn("c3");
         
         // Try to move the column. The order after the move should not be affected since it would be out of bounds.
-        Assert.False(table.Move(columnName, position));
+        Assert.False(cl.Move(columnName, position));
         
         Assert.Equal(1, c1.NewOrdinalPosition);
         Assert.Equal(2, c2.NewOrdinalPosition);
@@ -99,9 +99,9 @@ public class PgTableTests
     [Fact]
     public void Cannot_Move_Non_Existent_Column()
     {
-        var table = new PgTable("schema1", "table1");
+        var cl = new ColumnList("schema1", "table1");
 
-        var exception = Assert.Throws<Exception>(() => table.Move("not_found", 1));
+        var exception = Assert.Throws<Exception>(() => cl.Move("not_found", 1));
 
         Assert.Contains("Could not find column", exception.Message);
     }
@@ -109,13 +109,13 @@ public class PgTableTests
     [Fact]
     public void Can_Sort_Columns_In_Alphabetical_Order()
     {
-        var table = new PgTable("schema1", "table1");
+        var cl = new ColumnList("schema1", "table1");
 
-        var c1 = table.AddColumn("c");
-        var c2 = table.AddColumn("B");
-        var c3 = table.AddColumn("a");
+        var c1 = cl.AddColumn("c");
+        var c2 = cl.AddColumn("B");
+        var c3 = cl.AddColumn("a");
         
-        table.SortInAlphabeticalOrder();
+        cl.SortInAlphabeticalOrder();
         
         Assert.Equal(1, c3.NewOrdinalPosition);
         Assert.Equal(2, c2.NewOrdinalPosition);
@@ -125,13 +125,13 @@ public class PgTableTests
     [Fact]
     public void Can_Sort_Columns_In_Reverse_Alphabetical_Order()
     {
-        var table = new PgTable("schema1", "table1");
+        var cl = new ColumnList("schema1", "table1");
 
-        var c1 = table.AddColumn("a");
-        var c2 = table.AddColumn("B");
-        var c3 = table.AddColumn("c");
+        var c1 = cl.AddColumn("a");
+        var c2 = cl.AddColumn("B");
+        var c3 = cl.AddColumn("c");
         
-        table.SortInReverseAlphabeticalOrder();
+        cl.SortInReverseAlphabeticalOrder();
         
         Assert.Equal(1, c3.NewOrdinalPosition);
         Assert.Equal(2, c2.NewOrdinalPosition);

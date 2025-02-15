@@ -18,5 +18,6 @@ public static class DiRegistration
     public static void AddServices(this IServiceCollection services)
     {
         services.AddTransient<ReorderTableService>();
+        services.AddTransient<SchemaService>();
     }
 }

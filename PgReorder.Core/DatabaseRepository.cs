@@ -47,16 +47,81 @@ public class DatabaseRepository(DatabaseConnection connection)
         return dt;
     }
 
+    public async Task<List<PgSchema>> ReadSchemas(CancellationToken token)
+    {
+        await using var source = CreateDataSource();
+        await using var cmd = source.CreateCommand();
+        
+        cmd.CommandText = """
+                          SELECT ns.nspname AS schema_name, 
+                                 r.rolname AS owner_name
+                          FROM pg_catalog.pg_namespace ns
+                          JOIN pg_roles r ON ns.nspowner = r.oid
+                          WHERE ns.nspname NOT LIKE 'pg_%'
+                            AND ns.nspname <> 'information_schema'
+                          ORDER BY ns.nspname
+                          """;
+        
+        await using var reader = await cmd.ExecuteReaderAsync(token);
+
+        var schemas = new List<PgSchema>();
+        
+        while (await reader.ReadAsync(token))
+        {
+            schemas.Add(new PgSchema
+            {
+                SchemaName = ReadClass<string>(reader, "schema_name") ?? throw new Exception("Unexpected 'null' schema name"),
+                Owner = ReadClass<string>(reader, "owner_name") ?? throw new Exception("Unexpected 'null' schema owner")
+            });
+        }
+
+        return schemas;
+    }
+    
+    public async Task<List<PgTable>> ReadTables(string schema, CancellationToken token)
+    {
+        await using var source = CreateDataSource();
+        await using var cmd = source.CreateCommand();
+        
+        cmd.Parameters.Add(new NpgsqlParameter("schema", DbType.String) { Value = schema });
+        cmd.CommandText = """
+                          SELECT    
+                              c.relname table_name,
+                              pg_catalog.pg_get_userbyid(c.relowner) table_owner
+                          FROM pg_catalog.pg_class c
+                          JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                          WHERE c.relkind = 'r'      -- regular table
+                            AND NOT c.relispartition -- exclude child partitions
+                            AND n.nspname = @schema
+                          ORDER  BY table_name
+                          """;
+        
+        await using var reader = await cmd.ExecuteReaderAsync(token);
+
+        var schemas = new List<PgTable>();
+        
+        while (await reader.ReadAsync(token))
+        {
+            schemas.Add(new PgTable
+            {
+                TableName = ReadClass<string>(reader, "table_name") ?? throw new Exception("Unexpected 'null' table name"),
+                Owner = ReadClass<string>(reader, "table_owner")  ?? throw new Exception("Unexpected 'null' table owner")
+            });
+        }
+
+        return schemas;
+    }
+    
     /// <summary>
     /// Using information_schema.columns as a reference starting point:
     /// https://github.com/postgres/postgres/blob/master/src/backend/catalog/information_schema.sql#L667
     /// </summary>
-    public async Task<PgTable?> ReadTable(string tableSchema, string tableName, CancellationToken token)
+    public async Task<ColumnList?> ReadColumns(string tableSchema, string tableName, CancellationToken token)
     {
         await using var source = CreateDataSource();
         await using var cmd = source.CreateCommand();
 
-        var table = new PgTable(tableSchema, tableName);
+        var table = new ColumnList(tableSchema, tableName);
 
         cmd.Parameters.Add(new NpgsqlParameter("tableSchema", DbType.String) { Value = tableSchema });
         cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = tableName });
@@ -107,12 +172,12 @@ public class DatabaseRepository(DatabaseConnection connection)
         return table;
     }
 
-    public async Task ReadConstraints(PgTable table, CancellationToken token)
+    public async Task ReadConstraints(ColumnList columnList, CancellationToken token)
     {
         await using var source = CreateDataSource();
         await using var cmd = source.CreateCommand();
 
-        cmd.Parameters.Add(new NpgsqlParameter("schemaTable", DbType.String) { Value = table.SchemaTableEscaped() });
+        cmd.Parameters.Add(new NpgsqlParameter("schemaTable", DbType.String) { Value = columnList.SchemaTableEscaped() });
         cmd.CommandText = """
                           SELECT 
                               c.conname AS constraint_name,
@@ -126,7 +191,7 @@ public class DatabaseRepository(DatabaseConnection connection)
 
         while (await reader.ReadAsync(token))
         {
-            table.AddConstraint(new PgConstraint
+            columnList.AddConstraint(new PgConstraint
             {
                 Name = ReadClass<string>(reader, "constraint_name"),
                 Type = ReadStruct<char>(reader, "constraint_type"),

@@ -22,12 +22,12 @@ public abstract class DockerBase
     /// <summary>
     /// Reload a table from the database and makes sure the column definition / type for each column has not changed
     /// </summary>
-    protected async Task<PgTable> CheckColumnDefinition(PgTable source)
+    protected async Task<ColumnList> CheckColumnDefinition(ColumnList source)
     {
         var target = ReorderTableService;
         await target.Load(source.Schema, source.Table, CancellationToken.None);
-        source.Compare(target.LoadedTable);
-        return target.LoadedTable;
+        source.Compare(target.LoadedColumns);
+        return target.LoadedColumns;
     }
 
     /// <summary>

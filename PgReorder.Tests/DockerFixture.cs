@@ -49,14 +49,13 @@ public class DockerFixture : IDisposable
     {
         var services = new ServiceCollection();
 
-        services.AddConfiguration(new DatabaseConnection
-        {
-            Host = "127.0.0.1",
-            Port = "8811",
-            User = "admin",
-            Password = "password",
-            Database = "postgres"
-        });
+        services.AddConfiguration(new DatabaseConnection(
+            host: "127.0.0.1",
+            port: "8811",
+            user: "admin",
+            password: "password",
+            database: "postgres"
+        ));
         
         services.AddRepositories();
         services.AddServices();

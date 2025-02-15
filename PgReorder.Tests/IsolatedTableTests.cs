@@ -18,12 +18,12 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         var rts = ReorderTableService;
         await rts.Load("public", table, CancellationToken.None);
 
-        rts.Move(rts.LoadedTable.GetColumn("c1"), +2);
-        rts.Move(rts.LoadedTable.GetColumn("c2"), +1);
+        rts.Move(rts.LoadedColumns.GetColumn("c1"), +2);
+        rts.Move(rts.LoadedColumns.GetColumn("c2"), +1);
 
         await rts.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.LoadedTable);
+        await CheckColumnDefinition(rts.LoadedColumns);
         
         // The second row (c1 = 4) should return columns in this order: c3, c3, c1
         await CheckRowValues($"SELECT * FROM public.{table} ORDER BY c1 DESC LIMIT 1", table, 6, 5, 4);
@@ -45,12 +45,12 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         var rts = ReorderTableService;
         await rts.Load(schema, table, CancellationToken.None);
 
-        rts.Move(rts.LoadedTable.GetColumn("c1"), +2);
-        rts.Move(rts.LoadedTable.GetColumn("c2 with space"), +1);
+        rts.Move(rts.LoadedColumns.GetColumn("c1"), +2);
+        rts.Move(rts.LoadedColumns.GetColumn("c2 with space"), +1);
 
         await rts.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.LoadedTable);
+        await CheckColumnDefinition(rts.LoadedColumns);
         
         // The second row (c1 = 4) should return columns in this order: c3, c3, c1
         await CheckRowValues($"SELECT * FROM \"{schema}\".\"{table}\" ORDER BY c1 DESC LIMIT 1", table, 6, 5, 4);
@@ -117,7 +117,7 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         
         await rts.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.LoadedTable);
+        await CheckColumnDefinition(rts.LoadedColumns);
     }
 
     [Fact]
@@ -140,11 +140,11 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         
         var rts = ReorderTableService;
         await rts.Load("public", table, CancellationToken.None);
-        rts.Move(rts.LoadedTable.GetColumn("c2"), -1);
+        rts.Move(rts.LoadedColumns.GetColumn("c2"), -1);
         
         await rts.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.LoadedTable);
+        await CheckColumnDefinition(rts.LoadedColumns);
         
         // Add a new row after reordering to ensure that `id` receives the correct next value
         await Db.Raw($"INSERT INTO public.{table} (c1, c2) VALUES (30, 31)");
@@ -173,11 +173,11 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         
         var rts = ReorderTableService;
         await rts.Load("public", table, CancellationToken.None);
-        rts.Move(rts.LoadedTable.GetColumn("id"), +1);
+        rts.Move(rts.LoadedColumns.GetColumn("id"), +1);
         
         await rts.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.LoadedTable);
+        await CheckColumnDefinition(rts.LoadedColumns);
         
         // Add a new row after reordering to ensure that `id` receives the correct next value
         await Db.Raw($"INSERT INTO public.{table} (c1, c2) VALUES (30, 31)");
@@ -206,11 +206,11 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         
         var rts = ReorderTableService;
         await rts.Load("public", table, CancellationToken.None);
-        rts.Move(rts.LoadedTable.GetColumn("id"), +1);
+        rts.Move(rts.LoadedColumns.GetColumn("id"), +1);
         
         await rts.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.LoadedTable);
+        await CheckColumnDefinition(rts.LoadedColumns);
         
         // Expecting: c1 = 30, id = 3, c2 = 31 
         await CheckRowValues($"SELECT * FROM public.{table} ORDER BY id DESC LIMIT 1", table, 20, 2, 21);
@@ -237,11 +237,11 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         
         var rts = ReorderTableService;
         await rts.Load("public", table, CancellationToken.None);
-        rts.Move(rts.LoadedTable.GetColumn("c1"), +1);
+        rts.Move(rts.LoadedColumns.GetColumn("c1"), +1);
         
         await rts.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.LoadedTable);
+        await CheckColumnDefinition(rts.LoadedColumns);
         
         // Expecting: id1 = 2, id2 = 201, c2 = 21, c1 = 20 
         await CheckRowValues($"SELECT * FROM public.{table} ORDER BY id1 DESC LIMIT 1", table, 2, 201, 21, 20);
