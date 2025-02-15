@@ -1,4 +1,5 @@
-﻿using Terminal.Gui;
+﻿using System.Reflection;
+using Terminal.Gui;
 
 namespace PgReorder.App;
 
@@ -8,11 +9,14 @@ public class Program
     {
         try
         {
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            var versionCaption = $"v{version?.Major ?? 1}.{version?.Minor ?? 0}";
+            
             var parser = new CommandLineParser(args);
 
             if (parser.NothingGiven)
             {
-                Console.WriteLine("PgReorder");
+                Console.WriteLine($"PgReorder {versionCaption}");
                 Console.WriteLine("---------");
                 Console.WriteLine();
                 Console.WriteLine("Usage: pgreorder [options]");
@@ -38,7 +42,7 @@ public class Program
             
             
             Application.Init();
-            Application.Run(new MainWindow(context));
+            Application.Run(new MainWindow(context, versionCaption));
             Application.Shutdown();
         }
         catch (Exception e)

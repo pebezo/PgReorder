@@ -5,10 +5,11 @@ using Terminal.Gui;
 
 namespace PgReorder.App;
 
-public class MainWindow : Toplevel
+public class MainWindow : Window
 {
     private enum LeftSideView { Schemas, Tables, Columns }
     private readonly ContextService _context;
+    private readonly string _version;
 
     // Colors
     private readonly ColorScheme _colorScript;
@@ -26,10 +27,11 @@ public class MainWindow : Toplevel
     private Shortcut _shortcutMoveUp; 
     private Shortcut _shortcutMoveDown; 
     
-    public MainWindow(ContextService context)
+    public MainWindow(ContextService context, string version)
     {
         _context = context;
- 
+        _version = version;
+
         Application.Force16Colors = true;
         Application.QuitKey = Key.F10;
         // Remove the border around the main window
@@ -510,6 +512,18 @@ public class MainWindow : Toplevel
             new Shortcut
             {
                 CanFocus = false,
+                Title = "Help",
+                Key = Key.F1,
+                Action = () =>
+                {
+                    var helpWindow = new HelpWindow($"PgReorder {_version}", GetHelpBoxMessage());
+                    Application.Run(helpWindow);
+                    helpWindow.Dispose();
+                }
+            },
+            new Shortcut
+            {
+                CanFocus = false,
                 Title = "Go Back",
                 Key = Key.F2
             },
@@ -524,11 +538,33 @@ public class MainWindow : Toplevel
             new Shortcut
             {
                 CanFocus = false,
-                Title = "ReOrder v1"
+                Title = $"PgReorder {_version}"
             }
         );
 
         Add(_statusBar);
+    }
+
+    private static string GetHelpBoxMessage()
+    {
+        StringBuilder sb = new();
+
+        sb.AppendLine();
+        sb.AppendLine(@"     ____          ____                          __             ");           
+        sb.AppendLine(@"    / __ \ ____ _ / __ \ ___   ____   _____ ____/ /___   _____  "); 
+        sb.AppendLine(@"   / /_/ // __ `// /_/ // _ \ / __ \ / ___// __  // _ \ / ___/  ");
+        sb.AppendLine(@"  / ____// /_/ // _, _//  __// /_/ // /   / /_/ //  __// /      ");
+        sb.AppendLine(@" /_/     \__, //_/ |_| \___/ \____//_/    \__,_/ \___//_/       ");
+        sb.AppendLine(@"        /____/                                                  "); 
+        sb.AppendLine();
+        sb.AppendLine(" F2  | Go back to the previous screen (Esc also works)");
+        sb.AppendLine(" ----[ On the columns screen ]");
+        sb.AppendLine(" F5  | Move selected column up");
+        sb.AppendLine(" F8  | Move selected column down");
+        sb.AppendLine();
+        sb.AppendLine("https://github.com/pebezo/PgReorder");
+        
+        return sb.ToString();
     }
     
     private static ColorScheme CreateScheme(
