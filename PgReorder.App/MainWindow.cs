@@ -57,13 +57,13 @@ public class MainWindow : Window
                 SetNeedsDraw();
             }
 
-            if (key == Key.F5)
+            if (key == Key.F5 || key == Key.CursorUp.WithAlt || key == Key.CursorUp.WithCtrl)
             {
                 key.Handled = true;
                 MoveColumns(-1);
             }
             
-            if (key == Key.F8)
+            if (key == Key.F8  || key == Key.CursorDown.WithAlt || key == Key.CursorDown.WithCtrl)
             {
                 key.Handled = true;
                 MoveColumns(+1);
@@ -74,11 +74,6 @@ public class MainWindow : Window
                 key.Handled = true;
                 CopyScriptToClipboard();
             }
-        };
-
-        KeyDownNotHandled += (_, _) =>
-        {
-            
         };
     }
 
@@ -426,6 +421,15 @@ public class MainWindow : Window
         // multi-select options. But it currently does not. UI Catalog uses Ctrl-A for
         // a shortcut to About.
         _columnsTableView.MultiSelect = false;
+        
+        _columnsTableView.KeyDownNotHandled += (_, key) =>
+        {
+            // Don't allow the up/down cursor to change focus when it reaches the top/bottom of the script box 
+            if (key == Key.CursorDown || key == Key.CursorUp)
+            {
+                key.Handled = true;
+            }
+        };
 
         return _columnsTableView;
     }
@@ -481,10 +485,10 @@ public class MainWindow : Window
             SuperViewRendersLineCanvas = true,
             ReadOnly = true,
             CanFocus = true,
-            TabStop = TabBehavior.TabStop
+            TabStop = TabBehavior.TabStop,
         };
 
-        _textViewScript.KeyDown += (sender, key) =>
+        _textViewScript.KeyDown += (_, key) =>
         {
             // If nothing is selected in the text view we should copy the entire script. However, if there is a selection
             // then the default copy behavior should be maintained.
@@ -597,8 +601,8 @@ public class MainWindow : Window
         sb.AppendLine();
         sb.AppendLine(" F2  | Go back to the previous screen (Esc also works)");
         sb.AppendLine(" ----[ On the columns screen ]");
-        sb.AppendLine(" F5  | Move selected column up");
-        sb.AppendLine(" F8  | Move selected column down");
+        sb.AppendLine(" F5  | Move column up (Alt+Up or Ctrl+Up also works)");
+        sb.AppendLine(" F8  | Move column down (Alt+Down or Ctrl+Down also works)");
         sb.AppendLine(" F9  | Copy script to clipboard (Ctrl+C also works)");
         sb.AppendLine();
         sb.AppendLine("https://github.com/pebezo/PgReorder");
