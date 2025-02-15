@@ -50,7 +50,7 @@ public class MainWindow : Window
 
         KeyDown += (_, key) =>
         {
-            if (key == Key.Esc || key == Key.F2)
+            if (key == Key.Esc || key == Key.F2 || key == Key.Backspace)
             {
                 key.Handled = true;
                 PreviousLeftSide();
@@ -309,17 +309,17 @@ public class MainWindow : Window
             {
                 case LeftSideView.Schemas:
                     _schemasTableView.Visible = true;
-                    _containerLeft.Title = "Schemas";
+                    _containerLeft.Title = $"Schemas ({_context.Schemas.Count})";
                     _textViewScript.Text = "<< select a schema from the list";
                     break;
                 case LeftSideView.Tables:
                     _tablesTableView.Visible = true;
-                    _containerLeft.Title = "Schema: " + _context.SelectedSchema?.SchemaName;
+                    _containerLeft.Title = $"{_context.SelectedSchema?.SchemaName} ({_context.Tables.Count})";
                     _textViewScript.Text = "<< select a table from the list";
                     break;
                 case LeftSideView.Columns:
                     _columnsTableView.Visible = true;
-                    _containerLeft.Title = "Schema: " + _context.SelectedSchema?.SchemaName + "." + _context.SelectedTable?.TableName;
+                    _containerLeft.Title = $"{_context.SelectedSchema?.SchemaName}.{_context.SelectedTable?.TableName} ({_context.Columns.Count})";
                     _shortcutMoveUp.Visible = true;
                     _shortcutMoveDown.Visible = true;
                     _shortcutCopy.Visible = true;
