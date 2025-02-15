@@ -26,6 +26,7 @@ public class MainWindow : Window
     private TextView _textViewScript;
     private Shortcut _shortcutMoveUp; 
     private Shortcut _shortcutMoveDown; 
+    private Shortcut _shortcutCopy; 
     
     public MainWindow(ContextService context, string version)
     {
@@ -66,6 +67,12 @@ public class MainWindow : Window
             {
                 key.Handled = true;
                 MoveColumns(+1);
+            }
+
+            if (key == Key.C.WithCtrl || key == Key.F9)
+            {
+                key.Handled = true;
+                CopyScriptToClipboard();
             }
         };
 
@@ -301,6 +308,7 @@ public class MainWindow : Window
             _columnsTableView.Visible = false;
             _shortcutMoveUp.Visible = false;
             _shortcutMoveDown.Visible = false;
+            _shortcutCopy.Visible = false;
 
             switch (value)
             {
@@ -319,6 +327,7 @@ public class MainWindow : Window
                     _containerLeft.Title = "Schema: " + _context.SelectedSchema?.SchemaName + "." + _context.SelectedTable?.TableName;
                     _shortcutMoveUp.Visible = true;
                     _shortcutMoveDown.Visible = true;
+                    _shortcutCopy.Visible = true;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(CurrentLeftSide), value, "Unhandled left side");
@@ -340,6 +349,14 @@ public class MainWindow : Window
                 RefreshScript();
                 _columnsTableView.SelectedRow = nextRow;
             }
+        }
+    }
+
+    private void CopyScriptToClipboard()
+    {
+        if (!Clipboard.TrySetClipboardData(_textViewScript.Text))
+        {
+            MessageBox.ErrorQuery("Clipboard", "Was unable to copy script content to clipboard");
         }
     }
 
@@ -467,6 +484,17 @@ public class MainWindow : Window
             TabStop = TabBehavior.TabStop
         };
 
+        _textViewScript.KeyDown += (sender, key) =>
+        {
+            // If nothing is selected in the text view we should copy the entire script. However, if there is a selection
+            // then the default copy behavior should be maintained.
+            if (key == Key.C.WithCtrl && _textViewScript.SelectedLength == 0) 
+            {
+                key.Handled = true;
+                CopyScriptToClipboard();
+            }
+        };
+        
         _textViewScript.KeyDownNotHandled += (_, key) =>
         {
             // Don't allow the up/down cursor to change focus when it reaches the top/bottom of the script box 
@@ -484,6 +512,7 @@ public class MainWindow : Window
     [MemberNotNull(nameof(_statusBar))]
     [MemberNotNull(nameof(_shortcutMoveUp))]
     [MemberNotNull(nameof(_shortcutMoveDown))]
+    [MemberNotNull(nameof(_shortcutCopy))]
     private void BuildStatusBar()
     {
         _statusBar = new StatusBar
@@ -505,6 +534,14 @@ public class MainWindow : Window
             CanFocus = false,
             Title = "Move Down",
             Key = Key.F8,
+            Visible = false
+        };
+        
+        _shortcutCopy = new Shortcut
+        {
+            CanFocus = false,
+            Title = "Copy",
+            Key = Key.F9,
             Visible = false
         };
         
@@ -535,6 +572,7 @@ public class MainWindow : Window
             },
             _shortcutMoveUp,
             _shortcutMoveDown,
+            _shortcutCopy,
             new Shortcut
             {
                 CanFocus = false,
@@ -561,6 +599,7 @@ public class MainWindow : Window
         sb.AppendLine(" ----[ On the columns screen ]");
         sb.AppendLine(" F5  | Move selected column up");
         sb.AppendLine(" F8  | Move selected column down");
+        sb.AppendLine(" F9  | Copy script to clipboard (Ctrl+C also works)");
         sb.AppendLine();
         sb.AppendLine("https://github.com/pebezo/PgReorder");
         
