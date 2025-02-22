@@ -26,8 +26,8 @@ public abstract class DockerBase
     {
         var target = ReorderTableService;
         await target.Load(source.Schema, source.Table, CancellationToken.None);
-        source.Compare(target.LoadedColumns);
-        return target.LoadedColumns;
+        source.Compare(target.Columns);
+        return target.Columns;
     }
 
     /// <summary>

@@ -13,7 +13,7 @@
 
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-      <PackageReference Include="Terminal.Gui" Version="2.0.0-v2-develop.1532" />
+      <PackageReference Include="Terminal.Gui" Version="2.0.0-prealpha.1545" />
     </ItemGroup>
 
     <ItemGroup>

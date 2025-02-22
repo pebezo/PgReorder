@@ -130,7 +130,7 @@ public class DatabaseRepository(DatabaseConnection connection)
                               --ns.nspname AS table_schema,
                               --c.relname AS table_name,
                               a.attname column_name,
-                              pg_catalog.format_type(a.atttypid, NULL) AS data_type,
+                              pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
                               a.attnum AS ordinal_position,
                               CASE WHEN a.attgenerated = '' THEN PG_GET_EXPR(ad.adbin, ad.adrelid) END AS column_default,
                               NOT(a.attnotnull OR (t.typtype = 'd' AND t.typnotnull)) AS is_nullable,
@@ -182,9 +182,14 @@ public class DatabaseRepository(DatabaseConnection connection)
                           SELECT 
                               c.conname AS constraint_name,
                               c.contype AS constraint_type,
-                              pg_get_constraintdef(c.oid) AS constraint_definition
-                           FROM pg_constraint c
-                          WHERE c.conrelid = @schemaTable::regclass 
+                              pg_get_constraintdef(c.oid) AS constraint_definition,
+                              ARRAY_AGG(a.attname) AS column_name
+                          FROM pg_constraint c
+                          INNER JOIN pg_namespace n ON n.oid = c.connamespace
+                          CROSS JOIN LATERAL unnest(c.conkey) ak(k)
+                          INNER JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ak.k
+                          WHERE c.conrelid = @schemaTable::regclass
+                          GROUP BY 1,2,3
                           """;
         
         await using var reader = await cmd.ExecuteReaderAsync(token);
@@ -195,7 +200,8 @@ public class DatabaseRepository(DatabaseConnection connection)
             {
                 Name = ReadClass<string>(reader, "constraint_name"),
                 Type = ReadStruct<char>(reader, "constraint_type"),
-                Definition = ReadClass<string>(reader, "constraint_definition")
+                Definition = ReadClass<string>(reader, "constraint_definition"),
+                ColumnNames = ReadClass<string[]>(reader, "column_name"),
             });
         }
     }

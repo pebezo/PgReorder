@@ -13,9 +13,10 @@ public class ContextService
 
     public List<PgSchema> Schemas => _schema.Schemas ?? throw new Exception("No schemas have been loaded");
     public List<PgTable> Tables => _schema.Tables ?? throw new Exception("No tables have been loaded");
-    public List<PgColumn> Columns => _reorder.LoadedColumns.Columns ?? throw new Exception("No columns have been loaded"); 
+    public List<PgColumn> Columns => _reorder.Columns.Columns ?? throw new Exception("No columns have been loaded"); 
     public PgSchema? SelectedSchema { get; private set; }
     public PgTable? SelectedTable { get; private set; }
+    public bool OrderHasChanged => _reorder.OrderHasChanged();
     public string GeneratedScript() => _reorder.GenerateScript();
 
     [SetsRequiredMembers]
@@ -51,9 +52,34 @@ public class ContextService
         }).GetAwaiter().GetResult();
     }
 
-    public void Move(int index, int position)
+    public (int? first, int? last) FindFirstLastIndex()
     {
-        _reorder.Move(Columns[index], position);
+        return _reorder.Columns.FindFirstLastIndex();
+    }
+    
+    public bool Move(int index, int offset)
+    {
+        return _reorder.Columns.Move(index, offset);
+    }
+
+    public void ToggleSelection(int index)
+    {
+        _reorder.Columns.ToggleSelection(index); 
+    }
+    
+    public void ToggleSelection()
+    {
+        _reorder.Columns.ToggleSelection(); 
+    }
+    
+    public void UnselectAll()
+    {
+        _reorder.Columns.UnselectAll(); 
+    }
+    
+    public void SelectAll()
+    {
+        _reorder.Columns.SelectAll(); 
     }
     
     private static ServiceProvider BuildServiceProvider(CommandLineParser parser)

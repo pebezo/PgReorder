@@ -35,11 +35,11 @@ public class ConstraintsTests(DockerFixture fixture) : DockerBase(fixture)
         var rts = ReorderTableService;
         await rts.Load("public", table, CancellationToken.None);
         
-        rts.Move(rts.LoadedColumns.GetColumn("fk1_id"), -1);
+        rts.Columns.Move("fk1_id", -1);
         
         await rts.Save(CancellationToken.None);
         
-        var reloaded = await CheckColumnDefinition(rts.LoadedColumns);
+        var reloaded = await CheckColumnDefinition(rts.Columns);
 
         // Make sure the run ID did not leave traces in the foreign key name and that the 'original' name carried over
         Assert.NotNull(rts.LastRunId);
@@ -95,11 +95,11 @@ public class ConstraintsTests(DockerFixture fixture) : DockerBase(fixture)
         var rts = ReorderTableService;
         await rts.Load("public", table, CancellationToken.None);
         
-        rts.Move(rts.LoadedColumns.GetColumn("name"), +2);
+        rts.Columns.Move("name", +2);
         
         await rts.Save(CancellationToken.None);
         
-        var reloaded = await CheckColumnDefinition(rts.LoadedColumns);
+        var reloaded = await CheckColumnDefinition(rts.Columns);
         
         // Make sure the run ID did not leave traces in the foreign key name and that the 'original' name carried over
         Assert.NotNull(rts.LastRunId);

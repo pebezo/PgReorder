@@ -22,6 +22,9 @@ public class PgConstraint
     ///     x = exclusion constraint
     /// </summary>
     public required char? Type { get; set; }
+
+    public bool IsPrimaryKey => Type == 'p';
+    public bool IsForeignKey => Type == 'f';
     
     /// <summary>
     /// DDL definition of this constraint, for example:
@@ -29,9 +32,14 @@ public class PgConstraint
     ///     FOREIGN KEY (col) REFERENCES table2(col) ON UPDATE CASCADE
     /// </summary>
     public required string? Definition { get; set; }
+    
+    /// <summary>
+    /// Name of the column for this constraint
+    /// </summary>
+    public required string[]? ColumnNames { get; set; }
 
     /// <summary>
     /// Treat foreign-key constraints differently from all the other constraints
     /// </summary>
-    public bool UseInCreateTable => Type is not 'f';
+    public bool UseInCreateTable => IsForeignKey is false;
 }

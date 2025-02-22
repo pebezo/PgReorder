@@ -4,8 +4,8 @@ namespace PgReorder.Core;
 
 public class ReorderTableService(DatabaseRepository db)
 {
-    private ColumnList? _columnList;
-    public ColumnList LoadedColumns => _columnList ?? throw new Exception("No table has been loaded");
+    private ColumnList? _columns;
+    public ColumnList Columns => _columns ?? throw new Exception("No table has been loaded");
     
     public string? LastRunId { get; private set; }
     
@@ -22,14 +22,16 @@ public class ReorderTableService(DatabaseRepository db)
         }
 
         LastRunId = null;
-        _columnList = await db.ReadColumns(tableSchema, tableName, token);
+        _columns = await db.ReadColumns(tableSchema, tableName, token);
 
-        if (_columnList is null)
+        if (_columns is null)
         {
             throw new Exception($"Could not read table '{tableSchema}'.'{tableName}'");
         }
 
-        await db.ReadConstraints(_columnList, token);
+        await db.ReadConstraints(_columns, token);
+        
+        _columns.AfterColumnLoad();
     }
 
     public async Task Save(CancellationToken token)
@@ -38,11 +40,16 @@ public class ReorderTableService(DatabaseRepository db)
         await db.Raw(script, token);
     }
 
+    public bool OrderHasChanged()
+    {
+        return Columns.Columns.Count > 0 && Columns.Columns.Any(p => p.WasMoved);
+    }
+
     public string GenerateScript()
     {
         LastRunId = GenerateRandomRunId(6);
-        var sourceSchemaAndTable = LoadedColumns.SchemaTableEscaped();
-        var destinationSchemaAndTable = LoadedColumns.SchemaTableEscaped(tableSuffix:$"_reorder_{LastRunId}");
+        var sourceSchemaAndTable = Columns.SchemaTableEscaped();
+        var destinationSchemaAndTable = Columns.SchemaTableEscaped(tableSuffix:$"_reorder_{LastRunId}");
         
         var sb = new StringBuilder();
         sb.AppendLine("BEGIN TRANSACTION;");
@@ -68,21 +75,21 @@ public class ReorderTableService(DatabaseRepository db)
         sb.AppendLine($"DROP TABLE {sourceSchemaAndTable};");
         sb.AppendLine();
 
-        sb.AppendLine($"ALTER TABLE {destinationSchemaAndTable} RENAME TO {LoadedColumns.TableEscaped()};");
+        sb.AppendLine($"ALTER TABLE {destinationSchemaAndTable} RENAME TO {Columns.TableEscaped()};");
         sb.AppendLine();
         
-        foreach (var identity in LoadedColumns.AllIdentityColumns())
+        foreach (var identity in Columns.AllIdentityColumns())
         {
             sb.AppendLine($"-- Configure the identity column {identity.ColumnNameEscaped()}");
-            sb.AppendLine($"ALTER TABLE {LoadedColumns.TableEscaped()} ALTER {identity.ColumnNameEscaped()} ADD GENERATED {identity.IdentityGeneration} AS IDENTITY;");
+            sb.AppendLine($"ALTER TABLE {Columns.TableEscaped()} ALTER {identity.ColumnNameEscaped()} ADD GENERATED {identity.IdentityGeneration} AS IDENTITY;");
             sb.AppendLine("-- Ensure the sequence would return the proper next value");
-            sb.AppendLine($"SELECT setval(pg_get_serial_sequence('{LoadedColumns.TableEscaped()}', '{identity.ColumnNameEscaped()}'), (SELECT MAX({identity.ColumnNameEscaped()}) FROM {LoadedColumns.TableEscaped()}));");
+            sb.AppendLine($"SELECT setval(pg_get_serial_sequence('{Columns.TableEscaped()}', '{identity.ColumnNameEscaped()}'), (SELECT MAX({identity.ColumnNameEscaped()}) FROM {Columns.TableEscaped()}));");
         }
 
-        foreach (var fk in LoadedColumns.AllForeignKeyConstraints())
+        foreach (var fk in Columns.AllForeignKeyConstraints())
         {
             sb.AppendLine();
-            sb.AppendLine($"ALTER TABLE {LoadedColumns.TableEscaped()} ADD CONSTRAINT {fk.Name} {fk.Definition};");
+            sb.AppendLine($"ALTER TABLE {Columns.TableEscaped()} ADD CONSTRAINT {fk.Name} {fk.Definition};");
         }
         
         sb.AppendLine("COMMIT TRANSACTION;");
@@ -94,12 +101,12 @@ public class ReorderTableService(DatabaseRepository db)
     {
         List<string> lines = [];
         
-        foreach (var (column, _) in LoadedColumns.ColumnsWithLast())
+        foreach (var (column, _) in Columns.ColumnsWithLast())
         {
             lines.Add(column.AppendDefinition());
         }
 
-        foreach (var constraint in LoadedColumns.AllCreateTableConstraints())
+        foreach (var constraint in Columns.AllCreateTableConstraints())
         {
             if (constraint.Definition is not null)
             {
@@ -124,7 +131,7 @@ public class ReorderTableService(DatabaseRepository db)
 
     private void AddColumnsInNewOrder(StringBuilder sb)
     {
-        foreach (var (column, isLast) in LoadedColumns.ColumnsWithLast())
+        foreach (var (column, isLast) in Columns.ColumnsWithLast())
         {
             sb.Append($"    {column.ColumnNameEscaped()}");
             if (!isLast)
@@ -137,20 +144,15 @@ public class ReorderTableService(DatabaseRepository db)
             }
         }
     }
-    
-    public void Move(PgColumn column, int position)
-    {
-        LoadedColumns.Move(column, position);
-    }
 
     public void SortInAlphabeticalOrder()
     {
-        LoadedColumns.SortInAlphabeticalOrder();
+        Columns.SortInAlphabeticalOrder();
     }
     
     public void SortInReverseAlphabeticalOrder()
     {
-        LoadedColumns.SortInReverseAlphabeticalOrder();
+        Columns.SortInReverseAlphabeticalOrder();
     }
     
     private static string GenerateRandomRunId(int size)
