@@ -4,10 +4,12 @@ namespace PgReorder.Core;
 
 public class ReorderTableService(DatabaseRepository db)
 {
+    private PgTable? _table;
     private ColumnList? _columns;
     public ColumnList Columns => _columns ?? throw new Exception("No table has been loaded");
     
     public string? LastRunId { get; private set; }
+    public string? LastScript { get; private set; }
     
     public async Task Load(string? tableSchema, string? tableName, CancellationToken token)
     {
@@ -22,6 +24,7 @@ public class ReorderTableService(DatabaseRepository db)
         }
 
         LastRunId = null;
+        _table = await db.ReadTable(tableSchema, tableName, token);
         _columns = await db.ReadColumns(tableSchema, tableName, token);
 
         if (_columns is null)
@@ -36,8 +39,8 @@ public class ReorderTableService(DatabaseRepository db)
 
     public async Task Save(CancellationToken token)
     {
-        var script = GenerateScript();
-        await db.Raw(script, token);
+        LastScript = GenerateScript();
+        await db.Raw(LastScript, token);
     }
 
     public bool OrderHasChanged()
@@ -57,7 +60,9 @@ public class ReorderTableService(DatabaseRepository db)
         sb.AppendLine($"CREATE TABLE {destinationSchemaAndTable}");
         sb.AppendLine("(");
         AddCreateLines(sb);
-        sb.AppendLine(");");
+        sb.Append(")");
+        AddTableOptions(sb);
+        sb.AppendLine(";");
         sb.AppendLine();
 
         sb.AppendLine($"LOCK TABLE {sourceSchemaAndTable} IN EXCLUSIVE MODE;");
@@ -97,11 +102,38 @@ public class ReorderTableService(DatabaseRepository db)
         return sb.ToString();
     }
 
+    private void AddTableOptions(StringBuilder sb)
+    {
+        if (_table?.Options is not null && _table.Options.Length > 0)
+        {
+            foreach (var (item, first, last) in Iterate(_table.Options))
+            {
+                if (first)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("WITH");
+                    sb.AppendLine("(");        
+                }
+                sb.Append("    ");
+                if (last)
+                {
+                    sb.AppendLine(item);
+                    sb.Append(')');
+                }
+                else
+                {
+                    sb.Append(item);
+                    sb.AppendLine(",");
+                }
+            }
+        }
+    }
+
     private void AddCreateLines(StringBuilder sb)
     {
         List<string> lines = [];
         
-        foreach (var (column, _) in Columns.ColumnsWithLast())
+        foreach (var column in Columns.Columns)
         {
             lines.Add(column.AppendDefinition());
         }
@@ -114,7 +146,7 @@ public class ReorderTableService(DatabaseRepository db)
             }
         }
 
-        for (int i = 0; i < lines.Count; i++)
+        for (var i = 0; i < lines.Count; i++)
         {
             sb.Append("    ");
             sb.Append(lines[i]);
@@ -131,7 +163,7 @@ public class ReorderTableService(DatabaseRepository db)
 
     private void AddColumnsInNewOrder(StringBuilder sb)
     {
-        foreach (var (column, isLast) in Columns.ColumnsWithLast())
+        foreach (var (column, _, isLast) in Iterate(Columns.Columns))
         {
             sb.Append($"    {column.ColumnNameEscaped()}");
             if (!isLast)
@@ -153,6 +185,14 @@ public class ReorderTableService(DatabaseRepository db)
     public void SortInReverseAlphabeticalOrder()
     {
         Columns.SortInReverseAlphabeticalOrder();
+    }
+
+    private IEnumerable<(T item, bool isFirst, bool isLast)> Iterate<T>(IReadOnlyList<T> items)
+    {
+        for (int i = 0; i < items.Count; i++)
+        {
+            yield return (items[i], i == 0, i == items.Count - 1);
+        }
     }
     
     private static string GenerateRandomRunId(int size)

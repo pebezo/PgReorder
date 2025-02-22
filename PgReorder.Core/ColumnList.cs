@@ -15,14 +15,7 @@ public class ColumnList(string? schema, string? table)
     public string SchemaTableEscaped(string? tableSuffix = null) => $"{SchemaEscaped()}.{TableEscaped(tableSuffix)}";
  
     public List<PgColumn> Columns { get; } = [];
-    public IEnumerable<(PgColumn Column, bool IsLast)> ColumnsWithLast()
-    {
-        for (int i = 0; i < Columns.Count; i++)
-        {
-            yield return (Columns[i], i == Columns.Count - 1);
-        }
-    }
-
+    
     public IEnumerable<PgColumn> AllIdentityColumns()
     {
         foreach (var column in Columns)
@@ -295,7 +288,7 @@ public class ColumnList(string? schema, string? table)
             throw new Exception($"Current table name '{Table}' is different from target table name '{target.Table}");
         }
 
-        var columns = target.ColumnsWithLast().ToList();
+        var columns = target.Columns;
 
         if (Columns.Count != columns.Count)
         {

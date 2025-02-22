@@ -112,6 +112,42 @@ public class DatabaseRepository(DatabaseConnection connection)
         return schemas;
     }
     
+    public async Task<PgTable?> ReadTable(string schema, string table, CancellationToken token)
+    {
+        await using var source = CreateDataSource();
+        await using var cmd = source.CreateCommand();
+        
+        cmd.Parameters.Add(new NpgsqlParameter("schema", DbType.String) { Value = schema });
+        cmd.Parameters.Add(new NpgsqlParameter("table", DbType.String) { Value = table });
+        cmd.CommandText = """
+                          SELECT    
+                              c.relname table_name,
+                              pg_catalog.pg_get_userbyid(c.relowner) table_owner,
+                              c.reloptions table_options
+                          FROM pg_catalog.pg_class c
+                          JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                          WHERE c.relkind = 'r'      -- regular table
+                            AND NOT c.relispartition -- exclude child partitions
+                            AND n.nspname = @schema
+                            AND c.relname = @table
+                          ORDER  BY table_name
+                          """;
+        
+        await using var reader = await cmd.ExecuteReaderAsync(token);
+
+        while (await reader.ReadAsync(token))
+        {
+            return new PgTable
+            {
+                TableName = ReadClass<string>(reader, "table_name") ?? throw new Exception("Unexpected 'null' table name"),
+                Owner = ReadClass<string>(reader, "table_owner")  ?? throw new Exception("Unexpected 'null' table owner"),
+                Options = ReadClass<string[]?>(reader, "table_options")
+            };
+        }
+
+        return null;
+    }
+    
     /// <summary>
     /// Using information_schema.columns as a reference starting point:
     /// https://github.com/postgres/postgres/blob/master/src/backend/catalog/information_schema.sql#L667
@@ -127,8 +163,6 @@ public class DatabaseRepository(DatabaseConnection connection)
         cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = tableName });
         cmd.CommandText = """
                           SELECT
-                              --ns.nspname AS table_schema,
-                              --c.relname AS table_name,
                               a.attname column_name,
                               pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
                               a.attnum AS ordinal_position,
@@ -163,7 +197,6 @@ public class DatabaseRepository(DatabaseConnection connection)
                 ColumnDefault = ReadClass<string>(reader, "column_default"),
                 IsNullable = ReadStruct<bool>(reader, "is_nullable"),
                 DataType = ReadClass<string>(reader, "data_type"),
-                //UdtName = ReadClass<string>(reader, "udt_name"),
                 IsIdentity = ReadStruct<bool>(reader, "is_identity"),
                 IdentityGeneration = ReadClass<string>(reader, "identity_generation")
             });
@@ -213,7 +246,7 @@ public class DatabaseRepository(DatabaseConnection connection)
         return builder.Build();
     }
     
-    private T? ReadClass<T>(NpgsqlDataReader pgReader, string field) where T : class
+    private T? ReadClass<T>(NpgsqlDataReader pgReader, string field) where T : class?
     {
         var ordinal = pgReader.GetOrdinal(field);
         if (pgReader.IsDBNull(ordinal))

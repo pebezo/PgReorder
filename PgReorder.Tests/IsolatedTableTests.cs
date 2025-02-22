@@ -246,4 +246,45 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         // Expecting: id1 = 2, id2 = 201, c2 = 21, c1 = 20 
         await CheckRowValues($"SELECT * FROM public.{table} ORDER BY id1 DESC LIMIT 1", table, 2, 201, 21, 20);
     }
+
+    [Fact]
+    public async Task Table_With_Options()
+    {
+        var table = $"sample{TestId}";
+        await Db.Raw(
+            $"""
+             CREATE TABLE public.{table}
+             (
+                 id integer NOT NULL,
+                 c1 integer,
+                 c2 integer,
+                 PRIMARY KEY (id)
+             )
+             WITH
+             (
+                autovacuum_enabled = TRUE,
+                autovacuum_analyze_scale_factor = 0.2,
+                autovacuum_analyze_threshold = 5000
+             )
+             ;
+             """);
+        
+        await Db.Raw($"INSERT INTO public.{table} (id, c1, c2) VALUES (1, 10, 11)");
+        await Db.Raw($"INSERT INTO public.{table} (id, c1, c2) VALUES (2, 20, 21)");
+        
+        var rts = ReorderTableService;
+        await rts.Load("public", table, CancellationToken.None);
+        rts.Columns.Move("id", +2);
+        
+        await rts.Save(CancellationToken.None);
+        
+        Assert.Contains("autovacuum_enabled", rts.LastScript);
+        Assert.Contains("autovacuum_analyze_scale_factor", rts.LastScript);
+        Assert.Contains("autovacuum_analyze_threshold", rts.LastScript);
+        
+        await CheckColumnDefinition(rts.Columns);
+        
+        // Expecting: id1 = 2, id2 = 201, c2 = 21, c1 = 20 
+        await CheckRowValues($"SELECT * FROM public.{table} ORDER BY id DESC LIMIT 1", table, 20, 21, 2);
+    }
 }
