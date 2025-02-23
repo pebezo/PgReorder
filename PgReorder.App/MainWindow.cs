@@ -91,6 +91,7 @@ public class MainWindow : Window
             Y = 0,
             Width = Dim.Percent(50),
             Height = Dim.Fill(Dim.Func(() => _statusBar.Frame.Height)),
+            Arrangement = ViewArrangement.Fixed,
             BorderStyle = LineStyle.Rounded,
             SuperViewRendersLineCanvas = true,
             CanFocus = true,
@@ -245,6 +246,7 @@ public class MainWindow : Window
         _tablesTableView.CellActivated += (_, _) =>
         {
             _context.SelectTable(_tablesTableView.SelectedRow);
+            _columnsTableView.SelectedRow = 0;
             
             RefreshListOfColumns();
             RefreshScript();
@@ -393,8 +395,9 @@ public class MainWindow : Window
         {
             X = Pos.Right(_containerLeft) - 1,
             Y = 0,
-            Width = Dim.Fill(),
+            Width = Dim.Percent(50),
             Height = Dim.Fill(Dim.Func(() => _statusBar.Frame.Height)),
+            Arrangement = ViewArrangement.Fixed,
             BorderStyle = LineStyle.Rounded,
             Title = "SQL",
             SuperViewRendersLineCanvas = true,
@@ -450,6 +453,7 @@ public class MainWindow : Window
         _statusBar = new StatusBar
         {
             CanFocus = false,
+            Arrangement = ViewArrangement.Fixed,
             AlignmentModes = AlignmentModes.IgnoreFirstOrLast
         };
 
@@ -548,7 +552,7 @@ public class MainWindow : Window
                 throw new ArgumentOutOfRangeException(nameof(CurrentLeftSide), CurrentLeftSide, "Unhandled left side");
         }
     }
-
+    
     private LeftSideView CurrentLeftSide
     {
         // ReSharper disable once RedundantAccessorBody
