@@ -5,7 +5,7 @@ public class SchemaService(DatabaseRepository db)
     public List<PgSchema>? Schemas { get; private set; } = [];
     public List<PgTable>? Tables { get; private set; } = [];
 
-    public int Count => Schemas.Count;
+    public int Count => Schemas?.Count ?? 0;
     
     public async Task LoadSchemas(CancellationToken token)
     {

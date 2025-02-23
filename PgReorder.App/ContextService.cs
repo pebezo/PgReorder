@@ -29,9 +29,7 @@ public class ContextService
 
     public async Task LoadSchemas()
     {
-        Console.WriteLine("Reading schemas...");
         await _schema.LoadSchemas(_cts.Token);
-        Console.WriteLine($"Found {_schema.Count} schema(s)");
     }
 
     public void SelectSchema(int index)

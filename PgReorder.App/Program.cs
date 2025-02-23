@@ -1,9 +1,10 @@
 ﻿using System.Reflection;
+using System.Runtime.InteropServices;
 using Terminal.Gui;
 
 namespace PgReorder.App;
 
-public class Program
+public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
@@ -39,9 +40,18 @@ public class Program
 
             var context = new ContextService(parser);
             await context.LoadSchemas();
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                // Currently the NetDriver behaves better on Linux. Should re-evaluate after 
+                // https://github.com/gui-cs/Terminal.Gui/pull/3837 is merged/released
+                Application.Init(null, "NetDriver");
+            }
+            else
+            {
+                Application.Init();
+            }
             
-            
-            Application.Init();
             Application.Run(new MainWindow(context, versionCaption));
             Application.Shutdown();
         }
