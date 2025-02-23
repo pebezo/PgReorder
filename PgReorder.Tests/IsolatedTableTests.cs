@@ -10,7 +10,7 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
     [Fact]
     public async Task Simple_Table_With_Data()
     {
-        var table = $"sample{TestId}";
+        var table = $"simple_{TestId}";
         await Db.Raw($"CREATE TABLE public.{table} (c1 integer, c2 integer, c3 integer);");
         await Db.Raw($"INSERT INTO public.{table} (c1, c2, c3) VALUES (1,2,3);");
         await Db.Raw($"INSERT INTO public.{table} (c1, c2, c3) VALUES (4,5,6);");
@@ -62,7 +62,7 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
     [Fact]
     public async Task Various_Data_Types()
     {
-        var table = $"sample{TestId}";
+        var table = $"data_types{TestId}";
         await Db.Raw(
             $"""
              CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
@@ -123,7 +123,7 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
     [Fact]
     public async Task Generate_Always_As_Identity()
     {
-        var table = $"sample{TestId}";
+        var table = $"generate_always_as_identity{TestId}";
         await Db.Raw(
             $"""
              CREATE TABLE public.{table}
@@ -156,7 +156,7 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
     [Fact]
     public async Task Generate_By_Default_As_Identity()
     {
-        var table = $"sample{TestId}";
+        var table = $"generate_by_default_as_identity{TestId}";
         await Db.Raw(
             $"""
              CREATE TABLE public.{table}
@@ -189,7 +189,7 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
     [Fact]
     public async Task Table_With_One_Primary_Key_Column()
     {
-        var table = $"sample{TestId}";
+        var table = $"one_pk_{TestId}";
         await Db.Raw(
             $"""
              CREATE TABLE public.{table}
@@ -219,7 +219,7 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
     [Fact]
     public async Task Table_With_Multiple_Primary_Key_Columns()
     {
-        var table = $"sample{TestId}";
+        var table = $"multiple_pk_{TestId}";
         await Db.Raw(
             $"""
              CREATE TABLE public.{table}
@@ -250,7 +250,7 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
     [Fact]
     public async Task Table_With_Options()
     {
-        var table = $"sample{TestId}";
+        var table = $"with_options_{TestId}";
         await Db.Raw(
             $"""
              CREATE TABLE public.{table}
@@ -286,5 +286,45 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         
         // Expecting: id1 = 2, id2 = 201, c2 = 21, c1 = 20 
         await CheckRowValues($"SELECT * FROM public.{table} ORDER BY id DESC LIMIT 1", table, 20, 21, 2);
+    }
+    
+    [Fact]
+    public async Task Table_And_Columns_With_Comments()
+    {
+        var table = $"with_comments_{TestId}";
+        await Db.Raw(
+            $"""
+             CREATE TABLE public.{table}
+             (
+                 id integer NOT NULL,
+                 c1 integer,
+                 c2 integer,
+                 PRIMARY KEY (id)
+             );
+             COMMENT ON TABLE public.{table} IS 'table comment';
+             COMMENT ON COLUMN public.{table}.id IS 'id comment';
+             COMMENT ON COLUMN public.{table}.c2 IS 'c2 comment';
+             """);
+        
+        var rts = ReorderTableService;
+        await rts.Load("public", table, CancellationToken.None);
+        
+        rts.Columns.Move("c1", +1);
+        
+        await rts.Save(CancellationToken.None);
+
+        Assert.Contains("'table comment'", rts.LastScript);
+        Assert.Contains("'id comment'", rts.LastScript);
+        Assert.Contains("'c2 comment'", rts.LastScript);
+        Assert.DoesNotContain("'c1 comment'", rts.LastScript);
+        
+        await rts.Load("public", table, CancellationToken.None);
+
+        Assert.NotNull(rts.Table);
+        Assert.Equal("table comment", rts.Table.Comments);
+        
+        Assert.Equal("id comment", rts.Columns.FindColumn("id")?.Comments);
+        Assert.Equal("c2 comment", rts.Columns.FindColumn("c2")?.Comments);
+        Assert.Null(rts.Columns.FindColumn("c1")?.Comments);
     }
 }

@@ -4,7 +4,7 @@ namespace PgReorder.Core;
 
 public class ReorderTableService(DatabaseRepository db)
 {
-    private PgTable? _table;
+    public PgTable? Table { get; private set; }
     private ColumnList? _columns;
     public ColumnList Columns => _columns ?? throw new Exception("No table has been loaded");
     
@@ -24,7 +24,7 @@ public class ReorderTableService(DatabaseRepository db)
         }
 
         LastRunId = null;
-        _table = await db.ReadTable(tableSchema, tableName, token);
+        Table = await db.ReadTable(tableSchema, tableName, token);
         _columns = await db.ReadColumns(tableSchema, tableName, token);
 
         if (_columns is null)
@@ -63,6 +63,8 @@ public class ReorderTableService(DatabaseRepository db)
         sb.Append(")");
         AddTableOptions(sb);
         sb.AppendLine(";");
+        AddTableComments(sb, destinationSchemaAndTable);
+        AddColumnComments(sb, destinationSchemaAndTable);
         sb.AppendLine();
 
         sb.AppendLine($"LOCK TABLE {sourceSchemaAndTable} IN EXCLUSIVE MODE;");
@@ -104,9 +106,9 @@ public class ReorderTableService(DatabaseRepository db)
 
     private void AddTableOptions(StringBuilder sb)
     {
-        if (_table?.Options is not null && _table.Options.Length > 0)
+        if (Table?.Options is not null && Table.Options.Length > 0)
         {
-            foreach (var (item, first, last) in Iterate(_table.Options))
+            foreach (var (item, first, last) in Iterate(Table.Options))
             {
                 if (first)
                 {
@@ -124,6 +126,28 @@ public class ReorderTableService(DatabaseRepository db)
                 {
                     sb.Append(item);
                     sb.AppendLine(",");
+                }
+            }
+        }
+    }
+
+    private void AddTableComments(StringBuilder sb, string destinationSchemaAndTable)
+    {
+        if (Table?.Comments is not null)
+        {
+            sb.AppendLine($"COMMENT ON TABLE {destinationSchemaAndTable} IS '{PgShared.EscapeQuotes(Table.Comments)}';");
+        }
+    }
+    
+    private void AddColumnComments(StringBuilder sb, string destinationSchemaAndTable)
+    {
+        if (Columns.Columns.Any(p => p.Comments is not null))
+        {
+            foreach (var column in Columns.Columns)
+            {
+                if (column.Comments is not null)
+                {
+                    sb.AppendLine($"COMMENT ON COLUMN {destinationSchemaAndTable}.{column.ColumnNameEscaped()} IS '{PgShared.EscapeQuotes(column.Comments)}';");
                 }
             }
         }

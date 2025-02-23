@@ -19,6 +19,8 @@ public class PgColumn
     /// </summary>
     public string? IdentityGeneration { get; set; }
     
+    public string? Comments { get; set; }
+    
     /// <summary>
     /// Ordinal position after the column is in the new position
     /// </summary>

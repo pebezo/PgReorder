@@ -84,7 +84,7 @@ public class ColumnList(string? schema, string? table)
         _constraints.Add(constraint);
     }
 
-    private PgColumn? FindColumn(string? columnName)
+    public PgColumn? FindColumn(string? columnName)
     {
         return Columns.Find(p => p.ColumnName == columnName);
     }

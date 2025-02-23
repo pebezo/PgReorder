@@ -123,7 +123,8 @@ public class DatabaseRepository(DatabaseConnection connection)
                           SELECT    
                               c.relname table_name,
                               pg_catalog.pg_get_userbyid(c.relowner) table_owner,
-                              c.reloptions table_options
+                              c.reloptions table_options,
+                              pg_catalog.obj_description(c.oid) table_comments
                           FROM pg_catalog.pg_class c
                           JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
                           WHERE c.relkind = 'r'      -- regular table
@@ -141,7 +142,8 @@ public class DatabaseRepository(DatabaseConnection connection)
             {
                 TableName = ReadClass<string>(reader, "table_name") ?? throw new Exception("Unexpected 'null' table name"),
                 Owner = ReadClass<string>(reader, "table_owner")  ?? throw new Exception("Unexpected 'null' table owner"),
-                Options = ReadClass<string[]?>(reader, "table_options")
+                Options = ReadClass<string[]?>(reader, "table_options"),
+                Comments = ReadClass<string?>(reader, "table_comments")
             };
         }
 
@@ -169,7 +171,8 @@ public class DatabaseRepository(DatabaseConnection connection)
                               CASE WHEN a.attgenerated = '' THEN PG_GET_EXPR(ad.adbin, ad.adrelid) END AS column_default,
                               NOT(a.attnotnull OR (t.typtype = 'd' AND t.typnotnull)) AS is_nullable,
                               a.attidentity IN ('a', 'd') AS is_identity,
-                              CASE a.attidentity WHEN 'a' THEN 'ALWAYS' WHEN 'd' THEN 'BY DEFAULT' END AS identity_generation
+                              CASE a.attidentity WHEN 'a' THEN 'ALWAYS' WHEN 'd' THEN 'BY DEFAULT' END AS identity_generation,
+                              pg_catalog.col_description(c.oid, a.attnum) AS column_comments
                           FROM pg_attribute a
                           JOIN pg_class c ON c.oid = a.attrelid
                           JOIN pg_namespace ns ON c.relnamespace = ns.oid
@@ -198,7 +201,8 @@ public class DatabaseRepository(DatabaseConnection connection)
                 IsNullable = ReadStruct<bool>(reader, "is_nullable"),
                 DataType = ReadClass<string>(reader, "data_type"),
                 IsIdentity = ReadStruct<bool>(reader, "is_identity"),
-                IdentityGeneration = ReadClass<string>(reader, "identity_generation")
+                IdentityGeneration = ReadClass<string>(reader, "identity_generation"),
+                Comments = ReadClass<string>(reader, "column_comments")
             });
         }
         

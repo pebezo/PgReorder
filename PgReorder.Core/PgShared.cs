@@ -21,4 +21,14 @@ public static class PgShared
 
         return identifier;
     }
+
+    public static string? EscapeQuotes(string? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        return value.Contains('\'') ? value.Replace("'", "''") : value;
+    }
 }
