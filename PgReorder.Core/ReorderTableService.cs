@@ -33,6 +33,7 @@ public class ReorderTableService(DatabaseRepository db)
         }
 
         await db.ReadConstraints(_columns, token);
+        await db.ReadIndexes(_columns, token);
         
         _columns.AfterColumnLoad();
     }
@@ -99,6 +100,8 @@ public class ReorderTableService(DatabaseRepository db)
             sb.AppendLine($"ALTER TABLE {Columns.TableEscaped()} ADD CONSTRAINT {fk.Name} {fk.Definition};");
         }
         
+        AddIndexes(sb);
+        
         sb.AppendLine("COMMIT TRANSACTION;");
         
         return sb.ToString();
@@ -149,6 +152,20 @@ public class ReorderTableService(DatabaseRepository db)
                 {
                     sb.AppendLine($"COMMENT ON COLUMN {destinationSchemaAndTable}.{column.ColumnNameEscaped()} IS '{PgShared.EscapeQuotes(column.Comments)}';");
                 }
+            }
+        }
+    }
+
+    private void AddIndexes(StringBuilder sb)
+    {
+        foreach (var (index, _, last) in Iterate(Columns.Indexes))
+        {
+            sb.Append(index.Definition);
+            sb.AppendLine(";");
+
+            if (last)
+            {
+                sb.AppendLine();
             }
         }
     }

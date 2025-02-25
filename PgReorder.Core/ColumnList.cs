@@ -3,6 +3,7 @@
 public class ColumnList(string? schema, string? table)
 {
     private readonly List<PgConstraint> _constraints = [];
+    public List<PgIndex> Indexes { get; } = [];
     
     public string? Schema { get; } = schema;
     public string? SchemaEscaped() => PgShared.Escape(Schema);
@@ -82,6 +83,11 @@ public class ColumnList(string? schema, string? table)
     public void AddConstraint(PgConstraint constraint)
     {
         _constraints.Add(constraint);
+    }
+
+    public void AddIndex(PgIndex index)
+    {
+        Indexes.Add(index);
     }
 
     public PgColumn? FindColumn(string? columnName)

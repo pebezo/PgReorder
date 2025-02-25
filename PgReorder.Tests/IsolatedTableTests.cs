@@ -327,4 +327,35 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         Assert.Equal("c2 comment", rts.Columns.FindColumn("c2")?.Comments);
         Assert.Null(rts.Columns.FindColumn("c1")?.Comments);
     }
+
+    [Fact]
+    public async Task Multiple_Indexes()
+    {
+        var table = $"multiple_indexes_{TestId}";
+        await Db.Raw(
+            $"""
+             CREATE TABLE public.{table}
+             (
+                 id integer NOT NULL,
+                 c1 integer,
+                 c2 varchar,
+                 c3 integer,
+                 c4 varchar,
+                 name varchar,
+                 PRIMARY KEY (id)
+             );
+             CREATE INDEX ON public.{table} USING btree (c1 ASC NULLS LAST) WITH (deduplicate_items=True);
+             CREATE INDEX ON public.{table} USING btree (c2 varchar_ops DESC NULLS FIRST) WITH (deduplicate_items=True);
+             CREATE UNIQUE INDEX my_index ON public.{table} USING btree (c3 ASC NULLS LAST) NULLS NOT DISTINCT WITH (deduplicate_items=True);
+             CREATE INDEX my_expression ON public.{table} USING btree ((lower(c4)) ASC NULLS LAST) WITH (deduplicate_items=True);
+             """);
+        
+        var rts = ReorderTableService;
+        await rts.Load("public", table, CancellationToken.None);
+        await rts.Save(CancellationToken.None);
+
+        Assert.Contains("CREATE INDEX multiple_indexes_", rts.LastScript);
+        Assert.Contains("CREATE UNIQUE INDEX my_index", rts.LastScript);
+        Assert.Contains("CREATE INDEX my_expression", rts.LastScript);
+    }
 }

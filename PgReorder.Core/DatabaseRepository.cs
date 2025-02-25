@@ -242,6 +242,39 @@ public class DatabaseRepository(DatabaseConnection connection)
             });
         }
     }
+
+    public async Task ReadIndexes(ColumnList columnList, CancellationToken token)
+    {
+        await using var source = CreateDataSource();
+        await using var cmd = source.CreateCommand();
+
+        cmd.Parameters.Add(new NpgsqlParameter("schemaName", DbType.String) { Value = columnList.SchemaEscaped() });
+        cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = columnList.TableEscaped() });
+        cmd.CommandText = """
+                          SELECT
+                              x.indexrelid::regclass::varchar AS index_name,
+                              pg_get_indexdef(i.oid) AS index_definition
+                          FROM pg_index x
+                          JOIN pg_class c ON c.oid = x.indrelid
+                          JOIN pg_class i ON i.oid = x.indexrelid
+                          WHERE c.relnamespace::regnamespace = @schemaName::regnamespace
+                            AND c.relname = @tableName
+                            AND c.relkind IN ('r', 'm', 'p')
+                            AND i.relkind IN ('i', 'I')
+                            AND NOT x.indisprimary
+                          """;
+        
+        await using var reader = await cmd.ExecuteReaderAsync(token);
+
+        while (await reader.ReadAsync(token))
+        {
+            columnList.AddIndex(new PgIndex
+            {
+                Name = ReadClass<string>(reader, "index_name"),
+                Definition = ReadClass<string>(reader, "index_definition")
+            });
+        }
+    }
     
     private NpgsqlDataSource CreateDataSource()
     {

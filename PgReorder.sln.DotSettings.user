@@ -33,11 +33,15 @@
 	<s:String x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=7020124F_002D9FFC_002D4AC3_002D8F3D_002DAAB8E0240759_002Ff_003AView_002EKeyboard_002Ecs_002Fl_003A_002E_002E_003F_002E_002E_003FUsers_003FPeter_003FAppData_003FRoaming_003FJetBrains_003FRider2024_002E3_003Fresharper_002Dhost_003FSourcesCache_003F95675683d9dd1a923ea7f9151f5aea9515c44af13b72d87c439912cbd82f50_003FView_002EKeyboard_002Ecs/@EntryIndexedValue">ForceIncluded</s:String>
 	<s:String x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=7020124F_002D9FFC_002D4AC3_002D8F3D_002DAAB8E0240759_002Ff_003AView_002ENavigation_002Ecs_002Fl_003A_002E_002E_003F_002E_002E_003FUsers_003FPeter_003FAppData_003FRoaming_003FJetBrains_003FRider2024_002E3_003Fresharper_002Dhost_003FSourcesCache_003F14e13952e3ef2d2eabcdb819e91cff8751352a918c6b80348271b8710759c_003FView_002ENavigation_002Ecs/@EntryIndexedValue">ForceIncluded</s:String>
 	<s:String x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=7020124F_002D9FFC_002D4AC3_002D8F3D_002DAAB8E0240759_002Ff_003AWindow_002Ecs_002Fl_003A_002E_002E_003F_002E_002E_003FUsers_003FPeter_003FAppData_003FRoaming_003FJetBrains_003FRider2024_002E3_003Fresharper_002Dhost_003FSourcesCache_003F41a8ec8f18ffd3a2b9834565b656cf34cbeec954653b83627385c7dab26cf3_003FWindow_002Ecs/@EntryIndexedValue">ForceIncluded</s:String>
-	
-	
-	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=f6b8c641_002D6b55_002D477f_002D881c_002Dfb3330644d6f/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="All tests from Solution" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
-  &lt;Solution /&gt;&#xD;
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=03afbb1c_002D396c_002D4b33_002D921e_002D1fa7d11712d3/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="Multiple_Indexes" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;xUnit::69C103F0-17C3-C46B-62E7-341592300E08::net9.0::PgReorder.Tests.IsolatedTableTests.Multiple_Indexes&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String>
+	
+	
+	
+	
 	
 	
 	
