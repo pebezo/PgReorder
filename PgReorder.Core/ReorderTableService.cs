@@ -52,54 +52,39 @@ public class ReorderTableService(DatabaseRepository db)
     public string GenerateScript()
     {
         LastRunId = GenerateRandomRunId(6);
+        var suffix = $"_reorder_{LastRunId}";
         var sourceSchemaAndTable = Columns.SchemaTableEscaped();
-        var destinationSchemaAndTable = Columns.SchemaTableEscaped(tableSuffix:$"_reorder_{LastRunId}");
+        var destinationSchemaAndTable = Columns.SchemaTableEscaped(tableSuffix: suffix);
         
         var sb = new StringBuilder();
         sb.AppendLine("BEGIN TRANSACTION;");
         sb.AppendLine();
-        sb.AppendLine($"CREATE TABLE {destinationSchemaAndTable}");
-        sb.AppendLine("(");
-        AddCreateLines(sb);
-        sb.Append(")");
+        
+        AddCreateDestinationTable(sb, destinationSchemaAndTable);
         AddTableOptions(sb);
         sb.AppendLine(";");
         AddTableComments(sb, destinationSchemaAndTable);
         AddColumnComments(sb, destinationSchemaAndTable);
         sb.AppendLine();
 
+        sb.AppendLine("-- Lock the original table to prevent data loss");
         sb.AppendLine($"LOCK TABLE {sourceSchemaAndTable} IN EXCLUSIVE MODE;");
         sb.AppendLine();
 
-        sb.AppendLine($"INSERT INTO {destinationSchemaAndTable}");
-        sb.AppendLine("(");
-        AddColumnsInNewOrder(sb);
-        sb.AppendLine(")");
-        sb.AppendLine("SELECT");
-        AddColumnsInNewOrder(sb);
-        sb.AppendLine($"FROM {sourceSchemaAndTable};");
+        AddInsertIntoDestinationTable(sb, destinationSchemaAndTable, sourceSchemaAndTable);
         sb.AppendLine();
 
+        sb.AppendLine("-- Drop the original table since all the existing data has been copied over");
         sb.AppendLine($"DROP TABLE {sourceSchemaAndTable};");
         sb.AppendLine();
 
+        sb.AppendLine("-- Rename the new table back to the original name");
         sb.AppendLine($"ALTER TABLE {destinationSchemaAndTable} RENAME TO {Columns.TableEscaped()};");
         sb.AppendLine();
-        
-        foreach (var identity in Columns.AllIdentityColumns())
-        {
-            sb.AppendLine($"-- Configure the identity column {identity.ColumnNameEscaped()}");
-            sb.AppendLine($"ALTER TABLE {Columns.TableEscaped()} ALTER {identity.ColumnNameEscaped()} ADD GENERATED {identity.IdentityGeneration} AS IDENTITY;");
-            sb.AppendLine("-- Ensure the sequence would return the proper next value");
-            sb.AppendLine($"SELECT setval(pg_get_serial_sequence('{Columns.TableEscaped()}', '{identity.ColumnNameEscaped()}'), (SELECT MAX({identity.ColumnNameEscaped()}) FROM {Columns.TableEscaped()}));");
-        }
 
-        foreach (var fk in Columns.AllForeignKeyConstraints())
-        {
-            sb.AppendLine();
-            sb.AppendLine($"ALTER TABLE {Columns.TableEscaped()} ADD CONSTRAINT {fk.Name} {fk.Definition};");
-        }
-        
+        ConfigureIdentityColumns(sb);
+        RenamePrimaryKeyConstraints(sb, sourceSchemaAndTable, suffix);
+        AddForeignKeyConstraints(sb);
         AddIndexes(sb);
         
         sb.AppendLine("COMMIT TRANSACTION;");
@@ -155,13 +140,19 @@ public class ReorderTableService(DatabaseRepository db)
             }
         }
     }
-
-    private void AddIndexes(StringBuilder sb)
+    
+    private void ConfigureIdentityColumns(StringBuilder sb)
     {
-        foreach (var (index, _, last) in Iterate(Columns.Indexes))
+        foreach (var (identity, first, last) in Iterate(Columns.AllIdentityColumns()))
         {
-            sb.Append(index.Definition);
-            sb.AppendLine(";");
+            if (first)
+            {
+                sb.AppendLine("-- Configure identity column(s)");
+            }
+
+            sb.AppendLine($"ALTER TABLE {Columns.TableEscaped()} ALTER {identity.ColumnNameEscaped()} ADD GENERATED {identity.IdentityGeneration} AS IDENTITY;");
+            // Ensure the sequence would return the proper next value
+            sb.AppendLine($"SELECT setval(pg_get_serial_sequence('{Columns.TableEscaped()}', '{identity.ColumnNameEscaped()}'), (SELECT MAX({identity.ColumnNameEscaped()}) FROM {Columns.TableEscaped()}));");
 
             if (last)
             {
@@ -169,9 +160,66 @@ public class ReorderTableService(DatabaseRepository db)
             }
         }
     }
-
-    private void AddCreateLines(StringBuilder sb)
+    
+    private void RenamePrimaryKeyConstraints(StringBuilder sb, string schemaAndTable, string suffix)
     {
+        var constraints = Columns.AllPrimaryKeyConstraints().ToList();
+        if (constraints.Count > 1)
+        {
+            throw new Exception($"Unexpected number of primary key constraints ({constraints.Count})");
+        }
+
+        if (constraints.Count == 1)
+        {
+            sb.AppendLine("-- Rename the generated primary key constraint name to match the original name");
+            sb.AppendLine($"ALTER TABLE {schemaAndTable} RENAME CONSTRAINT {Columns.TableEscaped()}{suffix}_pkey TO {constraints[0].Name};");
+            sb.AppendLine();
+        }
+    }
+    
+    private void AddForeignKeyConstraints(StringBuilder sb)
+    {
+        foreach (var (fk, first, last) in Iterate(Columns.AllForeignKeyConstraints()))
+        {
+            if (first)
+            {
+                sb.AppendLine("-- Add back foreign key(s)");
+            }
+            
+            sb.AppendLine($"ALTER TABLE {Columns.TableEscaped()} ADD CONSTRAINT {fk.Name} {fk.Definition};");
+            
+            if (last)
+            {
+                sb.AppendLine();
+            }
+        }
+    }
+
+    private void AddIndexes(StringBuilder sb)
+    {
+        foreach (var (index, first, last) in Iterate(Columns.Indexes))
+        {
+            if (first)
+            {
+                sb.AppendLine("-- Add back index(es)");
+            }
+            
+            sb.Append(index.Definition);
+            sb.AppendLine(";");
+            
+            if (last)
+            {
+                sb.AppendLine();
+            }
+        }
+    }
+
+    private void AddCreateDestinationTable(StringBuilder sb, string destinationSchemaAndTable)
+    {
+        sb.AppendLine("-- Create a new table with the new column order");
+        sb.AppendLine($"CREATE TABLE {destinationSchemaAndTable}");
+        sb.AppendLine("(");
+        
         List<string> lines = [];
         
         foreach (var column in Columns.Columns)
@@ -200,20 +248,35 @@ public class ReorderTableService(DatabaseRepository db)
                 sb.AppendLine();
             }
         }
+        
+        sb.Append(")");
     }
 
-    private void AddColumnsInNewOrder(StringBuilder sb)
+    private void AddInsertIntoDestinationTable(StringBuilder sb, string destinationSchemaAndTable, string sourceSchemaAndTable)
     {
-        foreach (var (column, _, isLast) in Iterate(Columns.Columns))
+        sb.AppendLine("-- Copy existing data into the temporary table");
+        sb.AppendLine($"INSERT INTO {destinationSchemaAndTable}");
+        sb.AppendLine("(");
+        AddColumnsInNewOrder();
+        sb.AppendLine(")");
+        sb.AppendLine("SELECT");
+        AddColumnsInNewOrder();
+        sb.AppendLine($"FROM {sourceSchemaAndTable};");
+        return;
+
+        void AddColumnsInNewOrder()
         {
-            sb.Append($"    {column.ColumnNameEscaped()}");
-            if (!isLast)
+            foreach (var (column, _, isLast) in Iterate(Columns.Columns))
             {
-                sb.AppendLine(",");
-            }
-            else
-            {
-                sb.AppendLine();
+                sb.Append($"    {column.ColumnNameEscaped()}");
+                if (!isLast)
+                {
+                    sb.AppendLine(",");
+                }
+                else
+                {
+                    sb.AppendLine();
+                }
             }
         }
     }
@@ -228,6 +291,11 @@ public class ReorderTableService(DatabaseRepository db)
         Columns.SortInReverseAlphabeticalOrder();
     }
 
+    private IEnumerable<(T item, bool isFirst, bool isLast)> Iterate<T>(IEnumerable<T> items)
+    {
+        return Iterate(items.ToList());
+    }
+    
     private IEnumerable<(T item, bool isFirst, bool isLast)> Iterate<T>(IReadOnlyList<T> items)
     {
         for (int i = 0; i < items.Count; i++)

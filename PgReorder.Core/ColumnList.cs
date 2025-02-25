@@ -31,13 +31,12 @@ public class ColumnList(string? schema, string? table)
     /// <summary>
     /// List of constraints that should be used during the CREATE TABLE DDL
     /// </summary>
-    public IEnumerable<PgConstraint> AllCreateTableConstraints() => _constraints.Where(c => c.UseInCreateTable);
+    public IEnumerable<PgConstraint> AllCreateTableConstraints() => _constraints.Where(c => c.IsPrimaryKey);
     
-    /// <summary>
-    /// List of constraints that should be used after the temporary table has been dropped
-    /// </summary>
-    public IEnumerable<PgConstraint> AllForeignKeyConstraints() => _constraints.Where(c => !c.UseInCreateTable);
-
+    public IEnumerable<PgConstraint> AllPrimaryKeyConstraints() => _constraints.Where(c => c.IsPrimaryKey);
+    
+    public IEnumerable<PgConstraint> AllForeignKeyConstraints() => _constraints.Where(c => c.IsForeignKey);
+    
     internal void AfterColumnLoad()
     {
         foreach (var column in Columns)

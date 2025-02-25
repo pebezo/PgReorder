@@ -37,9 +37,4 @@ public class PgConstraint
     /// Name of the column for this constraint
     /// </summary>
     public required string[]? ColumnNames { get; set; }
-
-    /// <summary>
-    /// Treat foreign-key constraints differently from all the other constraints
-    /// </summary>
-    public bool UseInCreateTable => IsForeignKey is false;
 }
