@@ -17,17 +17,17 @@ public abstract class DockerBase
     protected static int TestId { get; private set; }
 
     protected DatabaseRepository Db => _fixture.Build<DatabaseRepository>();
-    protected ReorderTableService ReorderTableService => _fixture.Build<ReorderTableService>();
+    protected ReorderService ReorderService => _fixture.Build<ReorderService>();
     
     /// <summary>
     /// Reload a table from the database and makes sure the column definition / type for each column has not changed
     /// </summary>
-    protected async Task<ColumnList> CheckColumnDefinition(ColumnList source)
+    protected async Task<ReorderService> CheckColumnDefinition(ReorderService source)
     {
-        var target = ReorderTableService;
-        await target.Load(source.Schema, source.Table, CancellationToken.None);
-        source.Compare(target.Columns);
-        return target.Columns;
+        var target = ReorderService;
+        await target.Load(source.Schema?.SchemaName, source.Table?.TableName, CancellationToken.None);
+        source.Compare(target);
+        return target;
     }
 
     /// <summary>

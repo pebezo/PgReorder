@@ -32,19 +32,19 @@ public class ConstraintsTests(DockerFixture fixture) : DockerBase(fixture)
                      INSERT INTO public.{table} (name, fk1_id) VALUES ('P3', 10);
                      """);
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
         
-        rts.Columns.Move("fk1_id", -1);
+        rs.Move("fk1_id", -1);
         
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
         
-        var reloaded = await CheckColumnDefinition(rts.Columns);
+        var reloaded = await CheckColumnDefinition(rs);
 
         // Make sure the run ID did not leave traces in the foreign key name and that the 'original' name carried over
-        Assert.NotNull(rts.LastRunId);
+        Assert.NotNull(rs.LastRunId);
         Assert.Contains(reloaded.AllForeignKeyConstraints(), p => p.Name is not null && p.Name.Contains("original"));
-        Assert.DoesNotContain(reloaded.AllForeignKeyConstraints(), p => p.Name is not null && p.Name.Contains(rts.LastRunId));
+        Assert.DoesNotContain(reloaded.AllForeignKeyConstraints(), p => p.Name is not null && p.Name.Contains(rs.LastRunId));
         
         // Add a new row after reordering
         await Db.Raw($"INSERT INTO public.{table} (name, fk1_id) VALUES ('P4', 20)");
@@ -92,19 +92,19 @@ public class ConstraintsTests(DockerFixture fixture) : DockerBase(fixture)
                       INSERT INTO public.{table} (name, fk1_id, fk2_id) VALUES ('P3', 10, 90);
                       """);
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
         
-        rts.Columns.Move("name", +2);
+        rs.Move("name", +2);
         
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
         
-        var reloaded = await CheckColumnDefinition(rts.Columns);
+        var reloaded = await CheckColumnDefinition(rs);
         
         // Make sure the run ID did not leave traces in the foreign key name and that the 'original' name carried over
-        Assert.NotNull(rts.LastRunId);
+        Assert.NotNull(rs.LastRunId);
         Assert.Contains(reloaded.AllForeignKeyConstraints(), p => p.Name is not null && p.Name.Contains("original"));
-        Assert.DoesNotContain(reloaded.AllForeignKeyConstraints(), p => p.Name is not null && p.Name.Contains(rts.LastRunId));
+        Assert.DoesNotContain(reloaded.AllForeignKeyConstraints(), p => p.Name is not null && p.Name.Contains(rs.LastRunId));
         
         // Add a new row after reordering
         await Db.Raw($"INSERT INTO public.{table} (name, fk1_id, fk2_id) VALUES ('P4', 20, 90)");

@@ -5,6 +5,7 @@ using Serilog;
 
 namespace PgReorder.Tests;
 
+// ReSharper disable once ClassNeverInstantiated.Global
 public class DockerFixture : IDisposable
 {
     private readonly ServiceProvider _serviceProvider;

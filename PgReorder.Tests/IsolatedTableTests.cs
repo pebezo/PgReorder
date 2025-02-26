@@ -15,15 +15,15 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         await Db.Raw($"INSERT INTO public.{table} (c1, c2, c3) VALUES (1,2,3);");
         await Db.Raw($"INSERT INTO public.{table} (c1, c2, c3) VALUES (4,5,6);");
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
 
-        rts.Columns.Move("c1", +2);
-        rts.Columns.Move("c2", +1);
+        rs.Move("c1", +2);
+        rs.Move("c2", +1);
 
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.Columns);
+        await CheckColumnDefinition(rs);
         
         // The second row (c1 = 4) should return columns in this order: c3, c3, c1
         await CheckRowValues($"SELECT * FROM public.{table} ORDER BY c1 DESC LIMIT 1", table, 6, 5, 4);
@@ -42,15 +42,15 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         await Db.Raw($"INSERT INTO \"{schema}\".\"{table}\" (c1, \"c2 with space\", c3) VALUES (1,2,3);");
         await Db.Raw($"INSERT INTO \"{schema}\".\"{table}\" (c1, \"c2 with space\", c3) VALUES (4,5,6);");
         
-        var rts = ReorderTableService;
-        await rts.Load(schema, table, CancellationToken.None);
+        var rs = ReorderService;
+        await rs.Load(schema, table, CancellationToken.None);
 
-        rts.Columns.Move("c1", +2);
-        rts.Columns.Move("c2 with space", +1);
+        rs.Move("c1", +2);
+        rs.Move("c2 with space", +1);
 
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.Columns);
+        await CheckColumnDefinition(rs);
         
         // The second row (c1 = 4) should return columns in this order: c3, c2, c1
         await CheckRowValues($"SELECT * FROM \"{schema}\".\"{table}\" ORDER BY c1 DESC LIMIT 1", table, 6, 5, 4);
@@ -110,14 +110,14 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
                      )
                      """);
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
         
-        rts.SortInReverseAlphabeticalOrder();
+        rs.SortInReverseAlphabeticalOrder();
         
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.Columns);
+        await CheckColumnDefinition(rs);
     }
 
     [Fact]
@@ -138,13 +138,13 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         await Db.Raw($"INSERT INTO public.{table} (c1, c2) VALUES (10, 11)");
         await Db.Raw($"INSERT INTO public.{table} (c1, c2) VALUES (20, 21)");
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
-        rts.Columns.Move("c2", -1);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
+        rs.Move("c2", -1);
         
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.Columns);
+        await CheckColumnDefinition(rs);
         
         // Add a new row after reordering to ensure that `id` receives the correct next value
         await Db.Raw($"INSERT INTO public.{table} (c1, c2) VALUES (30, 31)");
@@ -171,13 +171,13 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         await Db.Raw($"INSERT INTO public.{table} (id, c1, c2) VALUES (1, 10, 11)");
         await Db.Raw($"INSERT INTO public.{table} (id, c1, c2) VALUES (2, 20, 21)");
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
-        rts.Columns.Move("id", +1);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
+        rs.Move("id", +1);
         
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.Columns);
+        await CheckColumnDefinition(rs);
         
         // Add a new row after reordering to ensure that `id` receives the correct next value
         await Db.Raw($"INSERT INTO public.{table} (c1, c2) VALUES (30, 31)");
@@ -204,13 +204,13 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         await Db.Raw($"INSERT INTO public.{table} (id, c1, c2) VALUES (1, 10, 11)");
         await Db.Raw($"INSERT INTO public.{table} (id, c1, c2) VALUES (2, 20, 21)");
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
-        rts.Columns.Move("id", +1);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
+        rs.Move("id", +1);
         
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.Columns);
+        await CheckColumnDefinition(rs);
         
         // Expecting: c1 = 30, id = 3, c2 = 31 
         await CheckRowValues($"SELECT * FROM public.{table} ORDER BY id DESC LIMIT 1", table, 20, 2, 21);
@@ -235,13 +235,13 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         await Db.Raw($"INSERT INTO public.{table} (id1, id2, c1, c2) VALUES (1, 200, 10, 11)");
         await Db.Raw($"INSERT INTO public.{table} (id1, id2, c1, c2) VALUES (2, 201, 20, 21)");
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
-        rts.Columns.Move("c1", +1);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
+        rs.Move("c1", +1);
         
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
         
-        await CheckColumnDefinition(rts.Columns);
+        await CheckColumnDefinition(rs);
         
         // Expecting: id1 = 2, id2 = 201, c2 = 21, c1 = 20 
         await CheckRowValues($"SELECT * FROM public.{table} ORDER BY id1 DESC LIMIT 1", table, 2, 201, 21, 20);
@@ -272,17 +272,17 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         await Db.Raw($"INSERT INTO public.{table} (id, c1, c2) VALUES (1, 10, 11)");
         await Db.Raw($"INSERT INTO public.{table} (id, c1, c2) VALUES (2, 20, 21)");
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
-        rts.Columns.Move("id", +2);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
+        rs.Move("id", +2);
         
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
         
-        Assert.Contains("autovacuum_enabled", rts.LastScript);
-        Assert.Contains("autovacuum_analyze_scale_factor", rts.LastScript);
-        Assert.Contains("autovacuum_analyze_threshold", rts.LastScript);
+        Assert.Contains("autovacuum_enabled", rs.LastScript);
+        Assert.Contains("autovacuum_analyze_scale_factor", rs.LastScript);
+        Assert.Contains("autovacuum_analyze_threshold", rs.LastScript);
         
-        await CheckColumnDefinition(rts.Columns);
+        await CheckColumnDefinition(rs);
         
         // Expecting: id1 = 2, id2 = 201, c2 = 21, c1 = 20 
         await CheckRowValues($"SELECT * FROM public.{table} ORDER BY id DESC LIMIT 1", table, 20, 21, 2);
@@ -306,26 +306,26 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
              COMMENT ON COLUMN public.{table}.c2 IS 'c2 comment';
              """);
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
         
-        rts.Columns.Move("c1", +1);
+        rs.Move("c1", +1);
         
-        await rts.Save(CancellationToken.None);
+        await rs.Save(CancellationToken.None);
 
-        Assert.Contains("'table comment'", rts.LastScript);
-        Assert.Contains("'id comment'", rts.LastScript);
-        Assert.Contains("'c2 comment'", rts.LastScript);
-        Assert.DoesNotContain("'c1 comment'", rts.LastScript);
+        Assert.Contains("'table comment'", rs.LastScript);
+        Assert.Contains("'id comment'", rs.LastScript);
+        Assert.Contains("'c2 comment'", rs.LastScript);
+        Assert.DoesNotContain("'c1 comment'", rs.LastScript);
         
-        await rts.Load("public", table, CancellationToken.None);
+        await rs.Load("public", table, CancellationToken.None);
 
-        Assert.NotNull(rts.Table);
-        Assert.Equal("table comment", rts.Table.Comments);
+        Assert.NotNull(rs.Table);
+        Assert.Equal("table comment", rs.Table.Comments);
         
-        Assert.Equal("id comment", rts.Columns.FindColumn("id")?.Comments);
-        Assert.Equal("c2 comment", rts.Columns.FindColumn("c2")?.Comments);
-        Assert.Null(rts.Columns.FindColumn("c1")?.Comments);
+        Assert.Equal("id comment", rs.FindColumn("id")?.Comments);
+        Assert.Equal("c2 comment", rs.FindColumn("c2")?.Comments);
+        Assert.Null(rs.FindColumn("c1")?.Comments);
     }
 
     [Fact]
@@ -350,12 +350,12 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
              CREATE INDEX my_expression ON public.{table} USING btree ((lower(c4)) ASC NULLS LAST) WITH (deduplicate_items=True);
              """);
         
-        var rts = ReorderTableService;
-        await rts.Load("public", table, CancellationToken.None);
-        await rts.Save(CancellationToken.None);
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
+        await rs.Save(CancellationToken.None);
 
-        Assert.Contains("CREATE INDEX multiple_indexes_", rts.LastScript);
-        Assert.Contains("CREATE UNIQUE INDEX my_index", rts.LastScript);
-        Assert.Contains("CREATE INDEX my_expression", rts.LastScript);
+        Assert.Contains("CREATE INDEX multiple_indexes_", rs.LastScript);
+        Assert.Contains("CREATE UNIQUE INDEX my_index", rs.LastScript);
+        Assert.Contains("CREATE INDEX my_expression", rs.LastScript);
     }
 }

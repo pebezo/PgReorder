@@ -3,23 +3,23 @@ using System.Text;
 
 namespace PgReorder.Core;
 
-[DebuggerDisplay("{ColumnName}, OP: {OrdinalPosition}, NOP: {NewOrdinalPosition}, SP: {SortPosition}")]
+[DebuggerDisplay("{ColumnName}, OP: {OrdinalPosition}, NOP: {NewOrdinalPosition}")]
 public class PgColumn
 {
-    public required string? ColumnName { get; set; }
+    public required string? ColumnName { get; init; }
     public string? ColumnNameEscaped() => PgShared.Escape(ColumnName);
-    public required int OrdinalPosition { get; set; }
-    public string? ColumnDefault { get; set; }
-    public bool IsNullable { get; set; }
-    public string? DataType { get; set; }
-    public bool IsIdentity { get; set; }
+    public required int OrdinalPosition { get; init; }
+    public string? ColumnDefault { get; init; }
+    public bool IsNullable { get; init; }
+    public string? DataType { get; init; }
+    public bool IsIdentity { get; init; }
     
     /// <summary>
     /// 'BY DEFAULT' or 'ALWAYS'
     /// </summary>
-    public string? IdentityGeneration { get; set; }
+    public string? IdentityGeneration { get; init; }
     
-    public string? Comments { get; set; }
+    public string? Comments { get; init; }
     
     /// <summary>
     /// Ordinal position after the column is in the new position
@@ -47,7 +47,7 @@ public class PgColumn
     /// <summary>
     /// Visual indicator that the current column is selected
     /// </summary>
-    public string DisplayIsSelected => IsSelected ? "*" : "\xB7";// ">";
+    public string DisplayIsSelected => IsSelected ? "*" : "\xB7";
 
     public string AppendDefinition()
     {

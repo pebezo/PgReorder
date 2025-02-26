@@ -9,11 +9,11 @@ public class ContextService
 {
     private readonly CancellationTokenSource _cts = new();
     private readonly SchemaService _schema;
-    private readonly ReorderTableService _reorder;
+    private readonly ReorderService _reorder;
 
     public List<PgSchema> Schemas => _schema.Schemas ?? throw new Exception("No schemas have been loaded");
     public List<PgTable> Tables => _schema.Tables ?? throw new Exception("No tables have been loaded");
-    public List<PgColumn> Columns => _reorder.Columns.Columns ?? throw new Exception("No columns have been loaded"); 
+    public List<PgColumn> Columns => _reorder.Columns ?? throw new Exception("No columns have been loaded"); 
     public PgSchema? SelectedSchema { get; private set; }
     public PgTable? SelectedTable { get; private set; }
     public bool OrderHasChanged => _reorder.OrderHasChanged();
@@ -24,7 +24,7 @@ public class ContextService
     {
         var serviceProvider = BuildServiceProvider(parser);
         _schema = serviceProvider.GetRequiredService<SchemaService>();
-        _reorder = serviceProvider.GetRequiredService<ReorderTableService>();
+        _reorder = serviceProvider.GetRequiredService<ReorderService>();
     }
 
     public async Task LoadSchemas()
@@ -52,32 +52,32 @@ public class ContextService
 
     public (int? first, int? last) FindFirstLastIndex()
     {
-        return _reorder.Columns.FindFirstLastIndex();
+        return _reorder.FindFirstLastIndex();
     }
     
     public bool Move(int index, int offset)
     {
-        return _reorder.Columns.Move(index, offset);
+        return _reorder.Move(index, offset);
     }
 
     public void ToggleSelection(int index)
     {
-        _reorder.Columns.ToggleSelection(index); 
+        _reorder.ToggleSelection(index); 
     }
     
     public void ToggleSelection()
     {
-        _reorder.Columns.ToggleSelection(); 
+        _reorder.ToggleSelection(); 
     }
     
     public void UnselectAll()
     {
-        _reorder.Columns.UnselectAll(); 
+        _reorder.UnselectAll(); 
     }
     
     public void SelectAll()
     {
-        _reorder.Columns.SelectAll(); 
+        _reorder.SelectAll(); 
     }
     
     private static ServiceProvider BuildServiceProvider(CommandLineParser parser)

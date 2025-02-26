@@ -83,7 +83,7 @@ public class DatabaseRepository(DatabaseConnection connection)
         await using var source = CreateDataSource();
         await using var cmd = source.CreateCommand();
         
-        cmd.Parameters.Add(new NpgsqlParameter("schema", DbType.String) { Value = schema });
+        cmd.Parameters.Add(new NpgsqlParameter("schemaName", DbType.String) { Value = schema });
         cmd.CommandText = """
                           SELECT    
                               c.relname table_name,
@@ -92,7 +92,7 @@ public class DatabaseRepository(DatabaseConnection connection)
                           JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
                           WHERE c.relkind = 'r'      -- regular table
                             AND NOT c.relispartition -- exclude child partitions
-                            AND n.nspname = @schema
+                            AND n.nspname = @schemaName
                           ORDER  BY table_name
                           """;
         
@@ -112,25 +112,28 @@ public class DatabaseRepository(DatabaseConnection connection)
         return schemas;
     }
     
-    public async Task<PgTable?> ReadTable(string schema, string table, CancellationToken token)
+    public async Task<(PgSchema schema, PgTable table)> ReadSchemaAndTable(string schema, string table, CancellationToken token)
     {
         await using var source = CreateDataSource();
         await using var cmd = source.CreateCommand();
         
-        cmd.Parameters.Add(new NpgsqlParameter("schema", DbType.String) { Value = schema });
-        cmd.Parameters.Add(new NpgsqlParameter("table", DbType.String) { Value = table });
+        cmd.Parameters.Add(new NpgsqlParameter("schemaName", DbType.String) { Value = schema });
+        cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = table });
         cmd.CommandText = """
                           SELECT    
+                              n.nspname schema_name,
+                              r.rolname AS schema_owner,
                               c.relname table_name,
                               pg_catalog.pg_get_userbyid(c.relowner) table_owner,
                               c.reloptions table_options,
                               pg_catalog.obj_description(c.oid) table_comments
                           FROM pg_catalog.pg_class c
                           JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                          JOIN pg_roles r ON n.nspowner = r.oid
                           WHERE c.relkind = 'r'      -- regular table
                             AND NOT c.relispartition -- exclude child partitions
-                            AND n.nspname = @schema
-                            AND c.relname = @table
+                            AND n.nspname = @schemaName
+                            AND c.relname = @tableName
                           ORDER  BY table_name
                           """;
         
@@ -138,31 +141,37 @@ public class DatabaseRepository(DatabaseConnection connection)
 
         while (await reader.ReadAsync(token))
         {
-            return new PgTable
+            var pgSchema = new PgSchema
+            {
+                SchemaName = ReadClass<string>(reader, "schema_name") ?? throw new Exception("Unexpected 'null' schema name"),
+                Owner = ReadClass<string>(reader, "schema_owner") ?? throw new Exception("Unexpected 'null' schema owner")
+            };
+            
+            var pgTable = new PgTable
             {
                 TableName = ReadClass<string>(reader, "table_name") ?? throw new Exception("Unexpected 'null' table name"),
                 Owner = ReadClass<string>(reader, "table_owner")  ?? throw new Exception("Unexpected 'null' table owner"),
                 Options = ReadClass<string[]?>(reader, "table_options"),
                 Comments = ReadClass<string?>(reader, "table_comments")
             };
+
+            return (pgSchema, pgTable);
         }
 
-        return null;
+        throw new Exception($"Could not load {schema}.{table}");
     }
     
     /// <summary>
     /// Using information_schema.columns as a reference starting point:
     /// https://github.com/postgres/postgres/blob/master/src/backend/catalog/information_schema.sql#L667
     /// </summary>
-    public async Task<ColumnList?> ReadColumns(string tableSchema, string tableName, CancellationToken token)
+    public async Task ReadColumns(Reorder reorder, CancellationToken token)
     {
         await using var source = CreateDataSource();
         await using var cmd = source.CreateCommand();
-
-        var table = new ColumnList(tableSchema, tableName);
-
-        cmd.Parameters.Add(new NpgsqlParameter("tableSchema", DbType.String) { Value = tableSchema });
-        cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = tableName });
+        
+        cmd.Parameters.Add(new NpgsqlParameter("schemaName", DbType.String) { Value = reorder.Schema?.SchemaName });
+        cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = reorder.Table?.TableName });
         cmd.CommandText = """
                           SELECT
                               a.attname column_name,
@@ -179,7 +188,7 @@ public class DatabaseRepository(DatabaseConnection connection)
                           JOIN pg_type t ON t.oid = a.atttypid
                           LEFT JOIN pg_attrdef ad ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum
                           WHERE c.relname = @tableName
-                            AND ns.nspname = @tableSchema
+                            AND ns.nspname = @schemaName
                             AND a.attnum > 0
                             AND NOT a.attisdropped
                             AND c.relkind IN ('r', 'v', 'f', 'p')
@@ -192,7 +201,7 @@ public class DatabaseRepository(DatabaseConnection connection)
         {
             var ordinalPosition = ReadStruct<int>(reader, "ordinal_position");
             
-            table.AddColumn(new PgColumn
+            reorder.Columns.Add(new PgColumn
             {
                 ColumnName = ReadClass<string>(reader, "column_name"),
                 OrdinalPosition = ordinalPosition,
@@ -205,16 +214,14 @@ public class DatabaseRepository(DatabaseConnection connection)
                 Comments = ReadClass<string>(reader, "column_comments")
             });
         }
-        
-        return table;
     }
 
-    public async Task ReadConstraints(ColumnList columnList, CancellationToken token)
+    public async Task ReadConstraints(Reorder reorder, CancellationToken token)
     {
         await using var source = CreateDataSource();
         await using var cmd = source.CreateCommand();
 
-        cmd.Parameters.Add(new NpgsqlParameter("schemaTable", DbType.String) { Value = columnList.SchemaTableEscaped() });
+        cmd.Parameters.Add(new NpgsqlParameter("schemaTable", DbType.String) { Value = reorder.SchemaTableEscaped() });
         cmd.CommandText = """
                           SELECT 
                               c.conname AS constraint_name,
@@ -233,23 +240,23 @@ public class DatabaseRepository(DatabaseConnection connection)
 
         while (await reader.ReadAsync(token))
         {
-            columnList.AddConstraint(new PgConstraint
+            reorder.Constraints.Add(new PgConstraint
             {
                 Name = ReadClass<string>(reader, "constraint_name"),
                 Type = ReadStruct<char>(reader, "constraint_type"),
                 Definition = ReadClass<string>(reader, "constraint_definition"),
-                ColumnNames = ReadClass<string[]>(reader, "column_name"),
+                ColumnNames = ReadClass<string[]>(reader, "column_name")
             });
         }
     }
 
-    public async Task ReadIndexes(ColumnList columnList, CancellationToken token)
+    public async Task ReadIndexes(Reorder reorder, CancellationToken token)
     {
         await using var source = CreateDataSource();
         await using var cmd = source.CreateCommand();
 
-        cmd.Parameters.Add(new NpgsqlParameter("schemaName", DbType.String) { Value = columnList.SchemaEscaped() });
-        cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = columnList.TableEscaped() });
+        cmd.Parameters.Add(new NpgsqlParameter("schemaName", DbType.String) { Value = reorder.Schema?.SchemaNameEscaped });
+        cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = reorder.Table?.TableNameEscaped });
         cmd.CommandText = """
                           SELECT
                               x.indexrelid::regclass::varchar AS index_name,
@@ -268,7 +275,7 @@ public class DatabaseRepository(DatabaseConnection connection)
 
         while (await reader.ReadAsync(token))
         {
-            columnList.AddIndex(new PgIndex
+            reorder.Indexes.Add(new PgIndex
             {
                 Name = ReadClass<string>(reader, "index_name"),
                 Definition = ReadClass<string>(reader, "index_definition")
@@ -283,7 +290,7 @@ public class DatabaseRepository(DatabaseConnection connection)
         return builder.Build();
     }
     
-    private T? ReadClass<T>(NpgsqlDataReader pgReader, string field) where T : class?
+    private static T? ReadClass<T>(NpgsqlDataReader pgReader, string field) where T : class?
     {
         var ordinal = pgReader.GetOrdinal(field);
         if (pgReader.IsDBNull(ordinal))
@@ -294,7 +301,7 @@ public class DatabaseRepository(DatabaseConnection connection)
         return pgReader.GetFieldValue<T>(ordinal);
     }
     
-    private T ReadStruct<T>(NpgsqlDataReader pgReader, string field) where T : struct
+    private static T ReadStruct<T>(NpgsqlDataReader pgReader, string field) where T : struct
     {
         var ordinal = pgReader.GetOrdinal(field);
         if (pgReader.IsDBNull(ordinal))

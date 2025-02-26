@@ -1,41 +1,18 @@
 ﻿namespace PgReorder.Core;
 
-public class ColumnList(string? schema, string? table)
+public class Reorder
 {
-    private readonly List<PgConstraint> _constraints = [];
-    public List<PgIndex> Indexes { get; } = [];
-    
-    public string? Schema { get; } = schema;
-    public string? SchemaEscaped() => PgShared.Escape(Schema);
-    
-    public string? Table { get; } = table;
-    public string? TableEscaped(string? tableSuffix = null) => tableSuffix is null
-        ? PgShared.Escape(Table)
-        : PgShared.Escape(Table + tableSuffix);
-    
-    public string SchemaTableEscaped(string? tableSuffix = null) => $"{SchemaEscaped()}.{TableEscaped(tableSuffix)}";
- 
+    public PgSchema? Schema { get; protected set; }
+    public PgTable? Table { get; protected set; }
     public List<PgColumn> Columns { get; } = [];
-    
-    public IEnumerable<PgColumn> AllIdentityColumns()
-    {
-        foreach (var column in Columns)
-        {
-            if (column.IsIdentity)
-            {
-                yield return column;
-            }
-        }
-    }
+    public List<PgConstraint> Constraints { get; }= [];
+    public List<PgIndex> Indexes { get; } = [];
 
-    /// <summary>
-    /// List of constraints that should be used during the CREATE TABLE DDL
-    /// </summary>
-    public IEnumerable<PgConstraint> AllCreateTableConstraints() => _constraints.Where(c => c.IsPrimaryKey);
+    protected IEnumerable<PgColumn> AllIdentityColumns() => Columns.Where(p => p.IsIdentity);
+    protected IEnumerable<PgConstraint> AllPrimaryKeyConstraints() => Constraints.Where(c => c.IsPrimaryKey);
+    public IEnumerable<PgConstraint> AllForeignKeyConstraints() => Constraints.Where(c => c.IsForeignKey);
     
-    public IEnumerable<PgConstraint> AllPrimaryKeyConstraints() => _constraints.Where(c => c.IsPrimaryKey);
-    
-    public IEnumerable<PgConstraint> AllForeignKeyConstraints() => _constraints.Where(c => c.IsForeignKey);
+    public string SchemaTableEscaped(string? tableSuffix = null) => $"{Schema?.SchemaNameEscaped}.{Table?.TableNameEscapedWithSuffix(tableSuffix)}";
     
     internal void AfterColumnLoad()
     {
@@ -48,45 +25,16 @@ public class ColumnList(string? schema, string? table)
 
     private bool IsPrimaryKey(PgColumn column)
     {
-        return _constraints.Any(p => p.ColumnNames is not null && 
+        return Constraints.Any(p => p.ColumnNames is not null && 
                                      p.ColumnNames.Any(c => c == column.ColumnName)  
                                      && p.IsPrimaryKey);
     }
 
     private bool IsForeignKey(PgColumn column)
     {
-        return _constraints.Any(p => p.ColumnNames is not null && 
+        return Constraints.Any(p => p.ColumnNames is not null && 
                                      p.ColumnNames.Any(c => c == column.ColumnName)  
                                      && p.IsForeignKey);
-    }
-
-    public void AddColumn(PgColumn column)
-    {
-        Columns.Add(column);
-    }
-    
-    public PgColumn AddColumn(string columnName)
-    {
-        var column = new PgColumn
-        {
-            ColumnName = columnName,
-            OrdinalPosition = Columns.Count + 1,
-            NewOrdinalPosition = Columns.Count + 1
-        };
-        
-        Columns.Add(column);
-        
-        return column;
-    }
-    
-    public void AddConstraint(PgConstraint constraint)
-    {
-        _constraints.Add(constraint);
-    }
-
-    public void AddIndex(PgIndex index)
-    {
-        Indexes.Add(index);
     }
 
     public PgColumn? FindColumn(string? columnName)
@@ -203,6 +151,14 @@ public class ColumnList(string? schema, string? table)
     }
     
     /// <summary>
+    /// Returns true is any of the columns were moved
+    /// </summary>
+    public bool OrderHasChanged()
+    {
+        return Columns.Count > 0 && Columns.Any(p => p.WasMoved);
+    }
+    
+    /// <summary>
     /// Returns true if we have one or more columns that have been selected to be moved
     /// </summary>
     private bool HasSelection()
@@ -256,18 +212,6 @@ public class ColumnList(string? schema, string? table)
             column.IsSelected = true;
         }
     }
-    
-    /// <summary>
-    /// Update the new ordinal position of every column using the current list order
-    /// </summary>
-    private void UpdateNewOrdinalPositions()
-    {
-        var ordinalPosition = 0;
-        foreach (var item in Columns)
-        {
-            item.NewOrdinalPosition = ++ordinalPosition;
-        }
-    }
 
     public void SortInAlphabeticalOrder()
     {
@@ -280,53 +224,16 @@ public class ColumnList(string? schema, string? table)
         Columns.Sort((p1, p2) => -string.Compare(p1.ColumnName, p2.ColumnName, StringComparison.OrdinalIgnoreCase));
         UpdateNewOrdinalPositions();
     }
-
-    public void Compare(ColumnList target)
+    
+    /// <summary>
+    /// Update the new ordinal position of every column using the current list order
+    /// </summary>
+    private void UpdateNewOrdinalPositions()
     {
-        if (Schema != target.Schema)
+        var ordinalPosition = 0;
+        foreach (var item in Columns)
         {
-            throw new Exception($"Current schema name '{Schema}' is different from target schema '{target.Schema}");
-        }
-
-        if (Table != target.Table)
-        {
-            throw new Exception($"Current table name '{Table}' is different from target table name '{target.Table}");
-        }
-
-        var columns = target.Columns;
-
-        if (Columns.Count != columns.Count)
-        {
-            throw new Exception($"Current table has '{Columns.Count}' column(s) versus target with '{columns.Count}' column(s)");
-        }
-
-        foreach (var sourceColumn in Columns)
-        {
-            var found = target.FindColumn(sourceColumn.ColumnName);
-            if (found is null)
-            {
-                throw new Exception($"Could not find column '{sourceColumn.ColumnName}' in target table name '{target.Table}'");
-            }
-
-            if (sourceColumn.ColumnDefault != found.ColumnDefault)
-            {
-                throw new Exception($"Column default '{sourceColumn.ColumnDefault}' is different ('{found.ColumnDefault}') in target table name '{target.Table}'");
-            }
-            
-            if (sourceColumn.IsNullable != found.IsNullable)
-            {
-                throw new Exception($"Column nullability '{sourceColumn.IsNullable}' is different ('{found.IsNullable}') in target table name '{target.Table}'");
-            }
-            
-            if (sourceColumn.DataType != found.DataType)
-            {
-                throw new Exception($"Column data type '{sourceColumn.DataType}' is different ('{found.DataType}') in target table name '{target.Table}'");
-            }
-            
-            if (sourceColumn.IdentityGeneration != found.IdentityGeneration)
-            {
-                throw new Exception($"Column identity generation '{sourceColumn.IdentityGeneration}' is different ('{found.IdentityGeneration}') in target table name '{target.Table}'");
-            }
+            item.NewOrdinalPosition = ++ordinalPosition;
         }
     }
 }
