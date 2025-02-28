@@ -21,6 +21,20 @@ In the screenshot below, `name` and `description` are selected.
 
 As soon as you move at least one column, the right side of the application will show the DDL you would need to run to get the same order of columns. You can copy the entire DDL with `Ctrl+C` while in the column list or SQL view.
 
+### Download
+
+To download the Linux binary, use:
+
+```
+wget https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder.tar.gz -o pgreorder.tar.gz
+```
+
+For Windows, you can download [pgreorder.zip](https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder.zip) or with `wget`
+
+```
+wget https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder.zip -o pgreorder.zip
+```
+
 ### How to connect
 
 With the current version, the application must have a direct path to connect to the database. If your network setup requires an SSH connection, you will have to build a tunnel to the database before starting the application.

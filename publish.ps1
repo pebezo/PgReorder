@@ -21,4 +21,9 @@ Rename-Item -Path ".publish/win/PgReorder.App.exe" -NewName "pgreorder.exe"
 Rename-Item -Path ".publish/linux/PgReorder.App" -NewName "pgreorder"
 Rename-Item -Path ".publish/osx/PgReorder.App" -NewName "pgreorder"
 
+Write-Host "Compressing" -f DarkGreen
+Compress-Archive -Path ".publish/win/pgreorder.exe" -DestinationPath ".publish/win/pgreorder.zip"
+cd .publish/linux
+tar -czf pgreorder.tar.gz pgreorder
+cd ../..
 Write-Host "Done" -f Green

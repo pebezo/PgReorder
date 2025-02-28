@@ -1,7 +1,5 @@
 ﻿<Solution>
-  <Folder Name="/Root/">
-    <File Path="docker-compose.yml" />
-    <File Path="Dockerfile" />
+  <Folder Name="/Root/">    
     <File Path="publish.ps1"/>
     <File Path="README.md"/>
     <File Path=".gitignore"/>
