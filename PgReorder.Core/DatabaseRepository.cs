@@ -286,7 +286,6 @@ public class DatabaseRepository(DatabaseConnection connection)
     private NpgsqlDataSource CreateDataSource()
     {
         var builder = new NpgsqlDataSourceBuilder(connection.ConnectionString);
-        builder.EnableDynamicJson();
         return builder.Build();
     }
     

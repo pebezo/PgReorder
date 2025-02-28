@@ -11,7 +11,7 @@ public static class Program
         try
         {
             var version = Assembly.GetExecutingAssembly().GetName().Version;
-            var versionCaption = $"v{version?.Major ?? 1}.{version?.Minor ?? 0}";
+            var versionCaption = $"v{version?.Major ?? 1}.{version?.Minor ?? 0}{((version?.Build ?? 0) > 0 ? "." + version?.Build : null)}";
             
             var parser = new CommandLineParser(args);
 
@@ -32,7 +32,7 @@ public static class Program
                 Console.WriteLine("  --schema my_schema");
                 Console.WriteLine();
                 Console.WriteLine("With 'cs' you can specify the entire connection string using this format:");
-                Console.WriteLine("https://www.connectionstrings.com/postgresql/");
+                Console.WriteLine("https://www.connectionstrings.com/npgsql/");
                 Console.WriteLine();
                 Console.WriteLine("If you specify 'cs' then you do not need to specify the rest of the options. However, if 'cn' is missing, then the host, port, user, password, and database must be specified.");
                 return 0;

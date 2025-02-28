@@ -111,6 +111,41 @@ public class ConstraintsTests(DockerFixture fixture) : DockerBase(fixture)
         
         // Expecting: id = 4, category_id = 20, name = P4 
         await CheckRowValues($"SELECT * FROM public.{table} ORDER BY id DESC LIMIT 1", table, 4, 20, 90, "P4");
-        
+    }
+    
+    /// <summary>
+    /// This is not a test, but something that allows us to build the demo table used in the readme
+    /// </summary>
+    [Fact]
+    public async Task Demo()
+    {
+        await Db.Raw("""
+                     CREATE TABLE public.demo_types
+                     (
+                         id integer NOT NULL PRIMARY KEY,
+                         name varchar NOT NULL
+                     );
+                     CREATE TABLE public.demo_categories
+                     (
+                         id integer NOT NULL PRIMARY KEY,
+                         name varchar NOT NULL
+                     );
+                     CREATE TABLE public.demo_table
+                     (
+                         id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                         name varchar NOT NULL,
+                         type_id integer NOT NULL,
+                         category_id integer NOT NULL,
+                         amount numeric(12,2),
+                         description varchar,
+                         added_utc timestamp
+                     );
+                     ALTER TABLE public.demo_table
+                        ADD CONSTRAINT demo_table_type_id_fk
+                            FOREIGN KEY (type_id) REFERENCES demo_types;
+                     ALTER TABLE public.demo_table
+                        ADD CONSTRAINT demo_table_category_id_fk
+                            FOREIGN KEY (category_id) REFERENCES demo_categories;
+                     """);
     }
 }
