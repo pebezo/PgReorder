@@ -26,7 +26,13 @@ As soon as you move at least one column, the right side of the application will 
 To download the Linux binary, use:
 
 ```
-wget -qO- https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder.tar.gz | gunzip | tar xvf -
+wget -qO- https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder-linux.tar.gz | gunzip | tar xvf -
+```
+
+To download the Mac/OSX binary, use:
+
+```
+wget -qO- https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder-osx.tar.gz | gunzip | tar xvf -
 ```
 
 For Windows, you can download [pgreorder.zip](https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder.zip) or with `wget`
