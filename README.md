@@ -1,10 +1,10 @@
-## PgReorder
+# PgReorder
 
 Postgres itself [does not currently support column reordering](https://wiki.postgresql.org/wiki/Alter_column_position). New columns are always added at the end of the existing list of columns. While this technically does not matter, for those us who like to have columns ordered in a certain way PgReorder can help generate the required DDLs to reorder the columns.
 
 PgReorder takes the approach of [recreating the entire table](https://wiki.postgresql.org/wiki/Alter_column_position). The other suggested approach of adding new columns and moving data around is not currently supported, but it may be in the future.
 
-### Console UI
+## Console UI
 
 PgReorder offers a [terminal / console GUI](https://github.com/gui-cs/Terminal.Gui) that allows you to navigate schemas, tables, and of course the list of columns from a table. One you are in the list of columns view (see below), you can
 
@@ -17,11 +17,11 @@ In the screenshot below, `name` and `description` are selected.
 
 ![](./Content/PgReorder.png "PgReorder Screenshot")
 
-### Copy the DDL
+## Copy the DDL
 
 As soon as you move at least one column, the right side of the application will show the DDL you would need to run to get the same order of columns. You can copy the entire DDL with `Ctrl+C` while in the column list or SQL view.
 
-### Download
+## Download
 
 To download the Linux binary, use:
 
@@ -35,7 +35,7 @@ For Windows, you can download [pgreorder.zip](https://github.com/pebezo/PgReorde
 wget https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder.zip -o pgreorder.zip
 ```
 
-### How to connect
+## How to connect
 
 With the current version, the application must have a direct path to connect to the database. If your network setup requires an SSH connection, you will have to build a tunnel to the database before starting the application.
 
@@ -53,7 +53,7 @@ pgreorder --cs "Server=localhost;Port=5000;User Id=my_user;Password=my_password;
 pgreorder --host localhost --port 5000 --user my_user --password my_password --database my_database
 ```
 
-### Limitations
+## Limitations
 
 Please make sure to examine the generated DDL carefully, and if possible, run it first on a development instance. While PgReorder does try to recreate the table as it was before the movement operation, your configuration may not be supported. If you came across such a scenario, please open an issue with details on how to reproduce it.
 
