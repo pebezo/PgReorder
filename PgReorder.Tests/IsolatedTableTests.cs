@@ -55,6 +55,33 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         // The second row (c1 = 4) should return columns in this order: c3, c2, c1
         await CheckRowValues($"SELECT * FROM \"{schema}\".\"{table}\" ORDER BY c1 DESC LIMIT 1", table, 6, 5, 4);
     }
+    
+    /// <summary>
+    /// Make sure the script properly escapes reserved words
+    /// </summary>
+    [Fact]
+    public async Task Schema_Table_And_Columns_With_Reserved_Words()
+    {
+        var schema = "ANY";
+        var table = "USER";
+        await Db.Raw($"CREATE SCHEMA \"{schema}\";");
+        await Db.Raw($"CREATE TABLE \"{schema}\".\"{table}\" (c1 integer, \"AS\" integer, c3 integer);");
+        await Db.Raw($"INSERT INTO \"{schema}\".\"{table}\" (c1, \"AS\", c3) VALUES (1,2,3);");
+        await Db.Raw($"INSERT INTO \"{schema}\".\"{table}\" (c1, \"AS\", c3) VALUES (4,5,6);");
+        
+        var rs = ReorderService;
+        await rs.Load(schema, table, CancellationToken.None);
+
+        rs.Move("c1", +2);
+        rs.Move("AS", +1);
+
+        await rs.Save(CancellationToken.None);
+        
+        await CheckColumnDefinition(rs);
+        
+        // The second row (c1 = 4) should return columns in this order: c3, c2, c1
+        await CheckRowValues($"SELECT * FROM \"{schema}\".\"{table}\" ORDER BY c1 DESC LIMIT 1", table, 6, 5, 4);
+    }
 
     /// <summary>
     /// Ensure that most common data types, and a few custom ones, are properly transferred over to the new table

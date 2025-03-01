@@ -22,12 +22,18 @@ public class ReorderService(DatabaseRepository db) : Reorder
         BeforeLoad();
         
         (Schema, Table) = await db.ReadSchemaAndTable(tableSchema, tableName, token);
-        
+
+#if DEBUG
+        await db.ReadColumns(this, token);
+        await db.ReadConstraints(this, token);
+        await db.ReadIndexes(this, token);
+#else
         var taskReadColumns = db.ReadColumns(this, token);
         var taskReadConstraints = db.ReadConstraints(this, token);
         var taskReadIndexes = db.ReadIndexes(this, token);
         
         Task.WaitAll(taskReadColumns, taskReadConstraints, taskReadIndexes);
+#endif
         
         AfterLoad();
     }
