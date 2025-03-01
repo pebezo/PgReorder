@@ -31,7 +31,7 @@ public class DockerFixture : IDisposable
 
         RunBatchFile("docker", "compose stop integration-db");
         RunBatchFile("docker", "compose rm -f integration-db");
-        RunBatchFile("docker", "compose up -d integration-db");
+        RunBatchFile("docker", "compose up -d --build integration-db");
         
         WaitForPostgres(Build<DatabaseRepository>());
     }
