@@ -35,10 +35,10 @@ To download the Mac/OSX binary, use:
 wget -qO- https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder-osx.tar.gz | gunzip | tar xvf -
 ```
 
-For Windows, you can download [pgreorder.zip](https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder.zip) or with `wget`
+For Windows, you can download [pgreorder-win.zip](https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder-win.zip) or with `wget`
 
 ```
-wget https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder.zip -o pgreorder.zip
+wget https://github.com/pebezo/PgReorder/releases/latest/download/pgreorder-win.zip -o pgreorder-win.zip
 ```
 
 ## How to connect
