@@ -221,7 +221,8 @@ public class DatabaseRepository(DatabaseConnection connection)
         await using var source = CreateDataSource();
         await using var cmd = source.CreateCommand();
 
-        cmd.Parameters.Add(new NpgsqlParameter("schemaTable", DbType.String) { Value = reorder.SchemaTableEscaped() });
+        cmd.Parameters.Add(new NpgsqlParameter("schemaName", DbType.String) { Value = reorder.Schema?.SchemaName });
+        cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = reorder.Table?.TableName });
         cmd.CommandText = """
                           SELECT 
                               c.conname AS constraint_name,
@@ -229,10 +230,11 @@ public class DatabaseRepository(DatabaseConnection connection)
                               pg_get_constraintdef(c.oid) AS constraint_definition,
                               ARRAY_AGG(a.attname) AS column_name
                           FROM pg_constraint c
-                          INNER JOIN pg_namespace n ON n.oid = c.connamespace
+                          INNER JOIN pg_namespace ns ON ns.oid = c.connamespace
                           CROSS JOIN LATERAL unnest(c.conkey) ak(k)
                           INNER JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ak.k
-                          WHERE c.conrelid = @schemaTable::regclass
+                          WHERE c.conrelid::regclass::text = @tableName
+                            AND ns.nspname = @schemaName
                           GROUP BY 1,2,3
                           """;
         
@@ -255,16 +257,17 @@ public class DatabaseRepository(DatabaseConnection connection)
         await using var source = CreateDataSource();
         await using var cmd = source.CreateCommand();
 
-        cmd.Parameters.Add(new NpgsqlParameter("schemaName", DbType.String) { Value = reorder.Schema?.SchemaNameEscaped });
-        cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = reorder.Table?.TableNameEscaped });
+        cmd.Parameters.Add(new NpgsqlParameter("schemaName", DbType.String) { Value = reorder.Schema?.SchemaName });
+        cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = reorder.Table?.TableName });
         cmd.CommandText = """
                           SELECT
-                              x.indexrelid::regclass::varchar AS index_name,
+                              x.indexrelid::regclass::text AS index_name,
                               pg_get_indexdef(i.oid) AS index_definition
                           FROM pg_index x
                           JOIN pg_class c ON c.oid = x.indrelid
                           JOIN pg_class i ON i.oid = x.indexrelid
-                          WHERE c.relnamespace::regnamespace = @schemaName::regnamespace
+                          JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                          WHERE n.nspname = @schemaName
                             AND c.relname = @tableName
                             AND c.relkind IN ('r', 'm', 'p')
                             AND i.relkind IN ('i', 'I')
