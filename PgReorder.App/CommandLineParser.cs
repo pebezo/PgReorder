@@ -26,10 +26,10 @@ public class CommandLineParser
 
         return new DatabaseConnection(
             Host ?? throw new Exception("Host was not specified"),
-            Port ?? throw new Exception("Port was not specified"),
+            Port ?? "5432",
             User ?? throw new Exception("User was not specified"),
             Password ?? throw new Exception("Password was not specified"),
-            Database
+            Database ?? "postgres"
         );
     }
 
