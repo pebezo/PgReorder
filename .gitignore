@@ -1,0 +1,8 @@
+**/.dockerignore
+**/.env
+**/.git
+**/.idea
+**/*.*proj.user
+**/bin
+**/obj
+.publish
