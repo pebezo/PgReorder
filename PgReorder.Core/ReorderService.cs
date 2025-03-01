@@ -19,6 +19,8 @@ public class ReorderService(DatabaseRepository db) : Reorder
             throw new ArgumentNullException(nameof(tableName), "Table name cannot be null");
         }
 
+        BeforeLoad();
+        
         (Schema, Table) = await db.ReadSchemaAndTable(tableSchema, tableName, token);
         
         var taskReadColumns = db.ReadColumns(this, token);
@@ -27,7 +29,7 @@ public class ReorderService(DatabaseRepository db) : Reorder
         
         Task.WaitAll(taskReadColumns, taskReadConstraints, taskReadIndexes);
         
-        AfterColumnLoad();
+        AfterLoad();
     }
 
     public async Task Save(CancellationToken token)

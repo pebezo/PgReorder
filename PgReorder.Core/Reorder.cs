@@ -13,8 +13,20 @@ public class Reorder
     public IEnumerable<PgConstraint> AllForeignKeyConstraints() => Constraints.Where(c => c.IsForeignKey);
     
     public string SchemaTableEscaped(string? tableSuffix = null) => $"{Schema?.SchemaNameEscaped}.{Table?.TableNameEscapedWithSuffix(tableSuffix)}";
+
+    /// <summary>
+    /// Reset / clear all the variables that are relevant to the current instance
+    /// </summary>
+    protected void BeforeLoad()
+    {
+        Schema = null;
+        Table = null;
+        Columns.Clear();
+        Constraints.Clear();
+        Indexes.Clear();
+    }
     
-    internal void AfterColumnLoad()
+    protected void AfterLoad()
     {
         foreach (var column in Columns)
         {
