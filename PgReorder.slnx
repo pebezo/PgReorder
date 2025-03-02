@@ -1,10 +1,10 @@
 ﻿<Solution>
-  <Folder Name="/Root/">    
-    <File Path="publish.ps1"/>
-    <File Path="README.md"/>
-    <File Path=".gitignore"/>
-    <File Path="docker-compose.yml"/>
-    <File Path="Dockerfile"/>
+  <Folder Name="/Root/">
+    <File Path="publish.ps1" />
+    <File Path="README.md" />
+    <File Path=".gitignore" />
+    <File Path="docker-compose.yml" />
+    <File Path="Dockerfile" />
   </Folder>
   <Project Path="PgReorder.App\PgReorder.App.csproj" Type="Classic C#" />
   <Project Path="PgReorder.Core\PgReorder.Core.csproj" Type="Classic C#" />
