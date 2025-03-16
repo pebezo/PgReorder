@@ -52,7 +52,7 @@ public class DockerFixture : IDisposable
 
         services.AddConfiguration(new DatabaseConnection(
             host: "127.0.0.1",
-            port: "8811",
+            port: "9999",
             user: "admin",
             password: "password",
             database: "postgres"

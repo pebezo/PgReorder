@@ -385,4 +385,60 @@ public class IsolatedTableTests(DockerFixture fixture) : DockerBase(fixture)
         Assert.Contains("CREATE UNIQUE INDEX my_index", rs.LastScript);
         Assert.Contains("CREATE INDEX my_expression", rs.LastScript);
     }
+
+    [Fact]
+    public async Task Tablespace_Table()
+    {
+        var table = $"tablespace_{TestId}";
+        await Db.Raw(
+            $"""
+             CREATE TABLESPACE ts_tables LOCATION '/tablespaces/tables';
+             CREATE TABLE {table}
+             (
+                 id integer NOT NULL,
+                 c1 integer,
+                 c2 varchar,
+                 c3 integer,
+                 PRIMARY KEY (id)
+             ) TABLESPACE ts_tables;
+             """);
+
+        var rs = ReorderService;
+        await rs.Load("public", table, CancellationToken.None);
+        rs.Move("c1", +1);
+        await rs.Save(CancellationToken.None);
+
+        Assert.Contains("TABLESPACE ts_tables", rs.LastScript);
+        
+        await rs.Load("public", table, CancellationToken.None);
+
+        Assert.NotNull(rs.Table);
+        Assert.Equal("ts_tables", rs.Table.Tablespace);
+    }
+    
+    [Fact]
+    public async Task Tablespace_Index()
+    {
+        var table = $"tablespace_{TestId}";
+        await Db.Raw(
+            $"""
+             CREATE TABLESPACE ts_indexes LOCATION '/tablespaces/indexes';
+             CREATE TABLE {table}
+             (
+                 id integer NOT NULL,
+                 c1 integer,
+                 c2 varchar,
+                 c3 integer,
+                 PRIMARY KEY (id)
+             );
+             CREATE INDEX ON public.{table} (c1) TABLESPACE ts_indexes;
+             """);
+
+         var rs = ReorderService;
+         await rs.Load("public", table, CancellationToken.None);
+         rs.Move("c1", +1);
+         await rs.Save(CancellationToken.None);
+
+        Assert.Contains("TABLESPACE ts_indexes", rs.LastScript);
+    }
 }

@@ -12,4 +12,9 @@ public class PgIndex
     ///     CREATE INDEX my_table_idx ON public.my_table USING btree (id) WITH (deduplicate_items='true')
     /// </summary>
     public required string? Definition { get; set; }
+    
+    /// <summary>
+    /// Name of tablespace if not the default one 
+    /// </summary>
+    public required string? Tablespace { get; set; }
 }

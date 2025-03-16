@@ -104,6 +104,7 @@ public class DatabaseRepository(DatabaseConnection connection)
         {
             schemas.Add(new PgTable
             {
+                Tablespace = null,
                 TableName = ReadClass<string>(reader, "table_name") ?? throw new Exception("Unexpected 'null' table name"),
                 Owner = ReadClass<string>(reader, "table_owner")  ?? throw new Exception("Unexpected 'null' table owner")
             });
@@ -120,7 +121,8 @@ public class DatabaseRepository(DatabaseConnection connection)
         cmd.Parameters.Add(new NpgsqlParameter("schemaName", DbType.String) { Value = schema });
         cmd.Parameters.Add(new NpgsqlParameter("tableName", DbType.String) { Value = table });
         cmd.CommandText = """
-                          SELECT    
+                          SELECT
+                              t.spcname AS tablespace,
                               n.nspname schema_name,
                               r.rolname AS schema_owner,
                               c.relname table_name,
@@ -130,6 +132,7 @@ public class DatabaseRepository(DatabaseConnection connection)
                           FROM pg_catalog.pg_class c
                           JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
                           JOIN pg_roles r ON n.nspowner = r.oid
+                          LEFT JOIN pg_tablespace t ON t.oid = c.reltablespace
                           WHERE c.relkind = 'r'      -- regular table
                             AND NOT c.relispartition -- exclude child partitions
                             AND n.nspname = @schemaName
@@ -149,6 +152,7 @@ public class DatabaseRepository(DatabaseConnection connection)
             
             var pgTable = new PgTable
             {
+                Tablespace = ReadClass<string?>(reader, "tablespace"),
                 TableName = ReadClass<string>(reader, "table_name") ?? throw new Exception("Unexpected 'null' table name"),
                 Owner = ReadClass<string>(reader, "table_owner")  ?? throw new Exception("Unexpected 'null' table owner"),
                 Options = ReadClass<string[]?>(reader, "table_options"),
@@ -262,11 +266,13 @@ public class DatabaseRepository(DatabaseConnection connection)
         cmd.CommandText = """
                           SELECT
                               x.indexrelid::regclass::text AS index_name,
-                              pg_get_indexdef(i.oid) AS index_definition
+                              pg_get_indexdef(i.oid) AS index_definition,
+                              t.spcname AS tablespace
                           FROM pg_index x
                           JOIN pg_class c ON c.oid = x.indrelid
                           JOIN pg_class i ON i.oid = x.indexrelid
                           JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                          LEFT JOIN pg_tablespace t ON t.oid = i.reltablespace
                           WHERE n.nspname = @schemaName
                             AND c.relname = @tableName
                             AND c.relkind IN ('r', 'm', 'p')
@@ -281,7 +287,8 @@ public class DatabaseRepository(DatabaseConnection connection)
             reorder.Indexes.Add(new PgIndex
             {
                 Name = ReadClass<string>(reader, "index_name"),
-                Definition = ReadClass<string>(reader, "index_definition")
+                Definition = ReadClass<string>(reader, "index_definition"),
+                Tablespace = ReadClass<string>(reader, "tablespace")
             });
         }
     }

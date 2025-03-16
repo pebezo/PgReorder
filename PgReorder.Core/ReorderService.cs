@@ -57,6 +57,7 @@ public class ReorderService(DatabaseRepository db) : Reorder
         
         AddCreateDestinationTable(sb, destinationSchemaAndTable);
         AddTableOptions(sb);
+        AddTablespace(sb);
         sb.AppendLine(";");
         AddTableComments(sb, destinationSchemaAndTable);
         AddColumnComments(sb, destinationSchemaAndTable);
@@ -111,6 +112,15 @@ public class ReorderService(DatabaseRepository db) : Reorder
                     sb.AppendLine(",");
                 }
             }
+        }
+    }
+
+    private void AddTablespace(StringBuilder sb)
+    {
+        if (Table?.Tablespace is not null)
+        {
+            sb.Append(" TABLESPACE ");
+            sb.Append(Table.Tablespace);
         }
     }
 
@@ -201,6 +211,12 @@ public class ReorderService(DatabaseRepository db) : Reorder
             }
             
             sb.Append(index.Definition);
+            if (index.Tablespace is not null)
+            {
+                // pg_get_indexdef does not contain the tablespace definition, so we need to add it manually
+                sb.Append(" TABLESPACE ");
+                sb.Append(index.Tablespace);
+            }
             sb.AppendLine(";");
             
             if (last)
